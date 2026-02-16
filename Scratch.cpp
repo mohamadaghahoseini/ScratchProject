@@ -65,12 +65,20 @@ struct KeyboardButton{
 struct ThemeGeneralTab{
     SDL_Color mainBackground={20,255,233};
 
-    SDL_Color closeButton;
-    SDL_Color closeButtonMouse;
-    SDL_Color windowButton;
-    SDL_Color windowButtonMouse;
-    SDL_Color minimizeButton;
-    SDL_Color minimizeButtonMouse;
+    SDL_Color closeButton={214,214,214,255};
+    SDL_Color closeButtonMouse={232,17,35,255};
+    SDL_Color windowButton={214,214,214,255};
+    SDL_Color windowButtonMouse={79,82,84,255};
+    SDL_Color minimizeButton={214,214,214,255};
+    SDL_Color minimizeButtonMouse={79,82,84,255/**/};
+};
+struct ThemeCodeTab{
+    SDL_Color CodeBackground;
+    SDL_Color motionBackground;
+    SDL_Color leftPanedl;
+    SDL_Color motionCicleButton;
+
+
 };
 
 struct Theme{
@@ -98,7 +106,7 @@ void updateWindowState(AppState &app,SDL_Event &e);
 // Action function
 // عملیات مربوط را در هر فریم انجام میدهد با توجه به توابع مربوط به دکمه ها
 void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTabButtons> &tab);
-void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,ThemeGeneralTab &colorGeneral);
+void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &color);
 void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGeneralTab &color);      // need to fix
 
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac=true);
@@ -147,7 +155,8 @@ int main( int argc, char* argv[])
             }
     };
 
-    Theme Light={ { {0,0,255,255},{0,0,0,0}  }   };
+    Theme light,color;
+    color=light; // default color
 
 
     TabTexture texture;
@@ -176,7 +185,7 @@ int main( int argc, char* argv[])
             updateWindowState(app,e);
         }
         keyboardButtonActions(keyboardButton,app,tabButtons);
-        AllTabButtonActions(tabButtons,app,ColorGeneral);
+        AllTabButtonActions(tabButtons,app,color);
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
 
@@ -382,13 +391,13 @@ void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTa
         }
     }   // have to finish ...
 }
-void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,ThemeGeneralTab &colorGeneral)
+void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &color)
 {
     for(auto &it:tab)
         if(it.active)
             switch (it.ID) {
                 case TAB_GENERAL:
-                    RenderGeneralTap(it.buttons,app,colorGeneral);
+                    RenderGeneralTap(it.buttons,app,color.general);
                     break;
 
             }
@@ -397,7 +406,7 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
 {
     SDL_SetRenderDrawColor(app.renderer,60,63,63,255);
     SDL_RenderClear(app.renderer);
-    int L=7;
+    float L=6;
 
     for(auto &it:buttons)
     {
@@ -407,15 +416,15 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
             {
                 if(it.onButton)
                 {
-                    SDL_SetRenderDrawColor(app.renderer,232,17,35,255);
+                    SDL_SetRenderDrawColor(app.renderer,color.closeButtonMouse.r,color.closeButtonMouse.g,color.closeButtonMouse.b,color.closeButtonMouse.a);
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
                 if(it.leftClick)
                     app.endProgram=true;
-                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),214,214,214,255);
-                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),214,214,214,255);
-                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,214,214,214,255);
-                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2))-1,(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2))-1,214,214,214,255);
+                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
+                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
+                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
+                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2))-1,(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2))-1,color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
             }
         }
         else if(it.ID==WINDOW_BUTTON)
@@ -424,31 +433,31 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
             {
                 if(it.onButton)
                 {
-                    SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
+                    SDL_SetRenderDrawColor(app.renderer,color.windowButtonMouse.r,color.windowButtonMouse.g,color.windowButtonMouse.b,color.windowButtonMouse.a);
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
-                SDL_SetRenderDrawColor(app.renderer,214,214,214,255);
-                SDL_Rect rectwindow={it.rect.x+it.rect.w/2-it.rect.w/10,it.rect.y+it.rect.h/2-it.rect.h/7,it.rect.w*2/10,it.rect.h*2/7};
-                SDL_RenderDrawRect(app.renderer,&rectwindow);
+                SDL_SetRenderDrawColor(app.renderer,color.windowButton.r,color.windowButton.g,color.windowButton.b,color.windowButton.a);
+                SDL_Rect rectWindow={it.rect.x+it.rect.w/2-it.rect.w/10,it.rect.y+it.rect.h/2-it.rect.w/10,it.rect.w*2/10,it.rect.w*2/10};
+                SDL_RenderDrawRect(app.renderer,&rectWindow);
             }
-            if(it.leftClick)
-            {
-                if(app.maximize)
-                {
-                    SDL_SetWindowSize(app.window,app.AVAILABLE_SCREEN.w,app.AVAILABLE_SCREEN.h);
-                    app.maximize=false;
-                }
-                else
-                {
-                    SDL_SetWindowSize(app.window,app.W/2,app.H/2);
-                    SDL_SetWindowPosition(app.window,app.W/4,app.H/4);
-                    app.W=app.W/2;
-                    app.H=app.H/2;
-                    app.X=app.W/4;
-                    app.Y=app.H/4;
-                    app.maximize=true;
-                }
-            }
+//           if(it.leftClick)
+//            {
+//                if(app.maximize)
+//                {
+//                    SDL_SetWindowSize(app.window,app.AVAILABLE_SCREEN.w,app.AVAILABLE_SCREEN.h);
+//                    app.maximize=false;
+//                }
+//                else
+//                {
+//                    SDL_SetWindowSize(app.window,app.W/2,app.H/2);
+//                    SDL_SetWindowPosition(app.window,app.W/4,app.H/4);
+//                    app.W=app.W/2;
+//                    app.H=app.H/2;
+//                    app.X=app.W/4;
+//                    app.Y=app.H/4;
+//                    app.maximize=true;
+//                }
+//            }
 
         }
         else if(it.ID==MINIMIZED_BUTTON)
@@ -457,7 +466,7 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
             {
                 if(it.onButton)
                 {
-                    SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
+                    SDL_SetRenderDrawColor(app.renderer,color.minimizeButtonMouse.r,color.minimizeButtonMouse.r,color.minimizeButtonMouse.b,color.minimizeButtonMouse.a);
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
                 int s=6;
@@ -492,4 +501,3 @@ void active(int id,std:: vector<AllTabButtons> &tab,bool ac)
     }
 
 }
-
