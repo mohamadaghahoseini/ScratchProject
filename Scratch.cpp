@@ -20,7 +20,8 @@ constexpr int TAB_GENERAL=1;
 struct AppState{
     bool endProgram=false;
     bool fullScreen=false;
-    int W,H,X,Y;
+    bool maximize=false;
+    int W,H,X=0,Y=0;
     int LastW,LastH;
 
     int FULL_SCREEN_W,FULL_SCREEN_H;
@@ -28,7 +29,14 @@ struct AppState{
 
     SDL_Renderer *renderer;
     SDL_Window *window;
+
+    // Code Tab
+    // در صورت بروز مشکل برای عوض کردن تب ها این بخش چک بشه
+    bool activeCodePage[9]= {};
+
+    std::map<std::string,TTF_Font*> font;
 };
+
 struct MouseState{
     int x=0,y=0;
 
@@ -74,7 +82,8 @@ struct ThemeGeneralTab{
     SDL_Color windowButtonMouse;
     SDL_Color minimizeButton;
     SDL_Color minimizeButtonMouse;
-    SDL_Color top ={138,85,215,225};
+    SDL_Color topBar ={133,92,214,225};
+    SDL_Color white={255,255,255,255};
 };
 struct Theme{
     ThemeGeneralTab general;
@@ -87,6 +96,7 @@ struct ButtonTextures{
     SDL_Texture* setting = nullptr;
     SDL_Texture* file = nullptr;
     SDL_Texture* flesh = nullptr;
+    SDL_Texture* edit = nullptr;
 
 };
 
@@ -115,7 +125,7 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
 void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures);
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
 ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer);
-
+void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color);
 
 
 
@@ -146,6 +156,9 @@ int main( int argc, char* argv[])
     SDL_SetWindowBordered(window,SDL_FALSE);
     SDL_RaiseWindow(window);
     app.window=window;
+
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+
     //----------
     TabTexture tabTexture;
    // SDL_Surface* tempSurface = IMG_Load("")
@@ -156,7 +169,23 @@ int main( int argc, char* argv[])
     renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
-    // SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+
+
+
+
+    float scale=std::min(app.W/1365.0,app.H/610.0);
+
+    app.font["Roman10.4"] = TTF_OpenFont("fonts/HelveticaNeue-Roman.otf", std::round(10.4*scale));
+    if (!app.font["Roman10.4"])
+    {
+        std::cout << "OpenFont Roman10.4 failed: " << TTF_GetError() << "\n";
+        return -1;
+    }
+    app.font["Roman11"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(11*scale));
+    app.font["Bold12"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
+    app.font["Bold14"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(14*scale));
+
 
 
     // Variable declaration
@@ -166,11 +195,11 @@ int main( int argc, char* argv[])
             {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                        {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
                                        {MINIMIZED_BUTTON, SDL_Rect{app.W-app.W*3/30,0,app.W/30,app.H/25}},
-                                       {SETTING_BUTTON, SDL_Rect{app.W*2/15,0,app.W/15,app.H/217*12},{3*iconSize,0,iconSize,iconSize}},
-                                       {EDIT_BUTTON, SDL_Rect{app.W*1/15,0,app.W/15,app.H/217*12},{4*iconSize,0,iconSize,iconSize}},
-                                       {FILE_BUTTON, SDL_Rect{0,0,app.W/15,app.H/217*12},{5*iconSize,0,iconSize,iconSize}},
+                                       {FILE_BUTTON, SDL_Rect{0,0,app.W*91/1503,app.H*48/867}},
+                                       {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*48/867}},
+                                       {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*48/867}}}
             }
-            }
+
     };
 
 
@@ -458,7 +487,7 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
         {
             if(it.onButton)
             {
-                SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
+                SDL_SetRenderDrawColor(app.renderer,79,82,84,50);
                 SDL_RenderFillRect(app.renderer,&it.rect);
             }
 
@@ -510,7 +539,7 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
         }
     }
     SDL_Rect topBar ={0,0,app.W,barHeight};
-    SDL_SetRenderDrawColor(app.renderer,138,85,215,225);
+    SDL_SetRenderDrawColor(app.renderer,color.topBar.r,color.topBar.g,color.topBar.b,color.topBar.a);
     SDL_RenderFillRect(app.renderer,&topBar);
 
 
@@ -519,8 +548,31 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
     for(auto& it :buttons)
     {
         if(it.ID==SETTING_BUTTON){
-            SDL_RenderCopy(app.renderer, buttonTextures.setting, nullptr,&it.rect);
+            std::string u="Settings";
+            SDL_Rect set={app.W*208/1503,app.H*14/867,20,20};
+            SDL_Rect flesh={app.W*291/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.setting, nullptr,&set);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*259/1503,app.H*23/867,u,"Bold12",color.white);
 
+        }
+        else if(it.ID==EDIT_BUTTON){
+            std::string u="Edit";
+            SDL_Rect edit={app.W*108/1503,app.H*14/867,21,20};
+            SDL_Rect flesh={app.W*163/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.edit, nullptr,&edit);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*145/1503,app.H*23/867,u,"Bold12",color.white);
+
+
+        }
+        else if(it.ID==FILE_BUTTON){
+            std::string u="File";
+            SDL_Rect file={app.W*15/1503,app.H*14/867,21,20};
+            SDL_Rect flesh={app.W*72/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.file, nullptr, &file);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*50/1503,app.H*23/867,u,"Bold12",color.white);
 
 
         }
@@ -558,5 +610,28 @@ ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer){
     textures.setting = LoadTexture(renderer,"set.png");
     textures.file = LoadTexture(renderer,"file.png");
     textures.flesh = LoadTexture(renderer,"flesh.png");
+    textures.edit = LoadTexture(renderer,"edit.png");
     return textures;
 }
+void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color)
+{
+    TTF_Font* Font=app.font[F];
+    SDL_Surface* surface= TTF_RenderUTF8_Blended(Font,T.c_str(),color);
+    if(!surface){
+        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n";
+        return;
+    }
+    SDL_Texture* texture= SDL_CreateTextureFromSurface(app.renderer,surface);
+    if(!texture){
+        std::cout << "SDL_CreateTextureFromSurface failed: " << SDL_GetError() << "\n";
+        SDL_FreeSurface(surface);
+        return;
+    }
+    SDL_FreeSurface(surface);
+    int w,h;
+    SDL_QueryTexture(texture,NULL,NULL,&w,&h);
+    SDL_Rect rr={x-w/2,y-h/2,w,h};
+    SDL_RenderCopy(app.renderer, texture, NULL, &rr);
+    SDL_DestroyTexture(texture);
+}
+
