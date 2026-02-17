@@ -4,6 +4,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL2_gfx.h>
 #include <c++/iostream>
+
 #include <map>
 #include <string>
 
@@ -11,7 +12,9 @@
 constexpr int CLOSE_BUTTON=9;
 constexpr int WINDOW_BUTTON=10;
 constexpr int MINIMIZED_BUTTON=11;
-
+constexpr int FILE_BUTTON=14;
+constexpr int EDIT_BUTTON=15;
+constexpr int SETTING_BUTTON=16;
 // Button names
 constexpr int TAB_GENERAL=12;
 constexpr int TAB_CODE=13;
@@ -25,6 +28,7 @@ constexpr int Sensing=5;
 constexpr int Operators=6;
 constexpr int Variables=7;
 constexpr int MyBlocks=8;
+
 
 // structs
 struct AppState{
@@ -46,6 +50,7 @@ struct AppState{
 
     std::map<std::string,TTF_Font*> font;
 };
+
 struct MouseState{
     int x=0,y=0;
 
@@ -57,10 +62,10 @@ struct MouseState{
     bool leftPressed=false;
     bool leftUp=false;
 };
-
 struct ButtonRect{
     int ID;
     SDL_Rect rect;
+    SDL_Rect srcRect;
 
     bool onButton=false;
     bool rightClick=false;
@@ -68,7 +73,9 @@ struct ButtonRect{
     bool rightPressed=false;
     bool leftPressed=false;
 
+
     bool active=true;
+
 };
 struct AllTabButtons{
     int ID;
@@ -81,8 +88,11 @@ struct KeyboardButton{
     bool keyDown[SDL_NUM_SCANCODES]={};     // this frame keydown ?
 };
 struct ThemeGeneralTab{
-    SDL_Color mainBackground={20,255,233};
+    SDL_Color mainBackground;
 
+    SDL_Color topBar ={133,92,214,225};
+    SDL_Color topBarhaber={113,78,182,255};
+    SDL_Color white={255,255,255,255};
     SDL_Color closeButton={214,214,214,255};
     SDL_Color closeButtonMouse={232,17,35,255};
     SDL_Color windowButton={214,214,214,255};
@@ -125,8 +135,8 @@ struct ThemeCodeTab{
     };
 
 
-};
 
+};
 struct Theme{
     ThemeGeneralTab general;
     ThemeCodeTab code;
@@ -153,6 +163,16 @@ struct Block{
     std::string text;
 
 };
+//---------
+struct ButtonTextures{
+    SDL_Texture* setting = nullptr;
+    SDL_Texture* file = nullptr;
+    SDL_Texture* flesh = nullptr;
+    SDL_Texture* edit = nullptr;
+
+};
+
+//// Mamad function
 
 // bool function
 bool isMouseInRect(MouseState &mouse,SDL_Rect &rect);
@@ -166,8 +186,8 @@ void resetMouseState(MouseState &mouse);
 // update function
 // با گرفتن هر ایونت اپدیت میکند
 void updateKeyboardButtons(KeyboardButton &key,SDL_Event &e);
+void updateMouseState(MouseState &mouse, SDL_Event &e);
 void updateButtonRectAndMouseState(MouseState &mouse,std:: vector<AllTabButtons> &tab,SDL_Event &e);
-void updateWindowState(AppState &app,SDL_Event &e);
 
 // Action function
 // عملیات مربوط را در هر فریم انجام میدهد با توجه به توابع مربوط به دکمه ها
@@ -179,6 +199,11 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac=true);
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color);
 
+//// Golab function
+void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures);
+SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
+ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer);
+void DestroyButtonTexture(ButtonTextures &textures);
 
 int main( int argc, char* argv[]) {
     AppState app;
@@ -186,6 +211,10 @@ int main( int argc, char* argv[]) {
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_EVENTS);
     TTF_Init();
+
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        std::cout << "IMG_Init Error: " << IMG_GetError() << std::endl;
+    }
 
     SDL_DisplayMode full_Screen;
     SDL_GetCurrentDisplayMode(0, &full_Screen);
@@ -204,40 +233,53 @@ int main( int argc, char* argv[]) {
     SDL_RaiseWindow(window);
     app.window = window;
 
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
+
+    //----------
+    TabTexture tabTexture;
+    // SDL_Surface* tempSurface = IMG_Load("")
+
+
 
     SDL_Renderer *renderer;
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
-    app.renderer = renderer;
-    // SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
-//    SDL_RenderSetLogicalSize(app.renderer,app.W,app.H);
+    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+    // Mamad
+    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    app.renderer=renderer;
+    ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
+
+
+
 
     // Variable declaration
+    int iconSize=40;
 
     std::vector<AllTabButtons> tabButtons = {
-            {TAB_GENERAL, true, {{CLOSE_BUTTON, SDL_Rect{app.W - app.W / 30, 0, app.W / 30, app.H / 25}},
-                                        {WINDOW_BUTTON, SDL_Rect{app.W - app.W * 2 / 30, 0, app.W / 30, app.H / 25}},
-                                        {MINIMIZED_BUTTON, SDL_Rect{app.W - app.W * 3 / 30, 0, app.W / 30, app.H / 25}}
-
-                                }
+            {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
+                                         {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
+                                         {MINIMIZED_BUTTON, SDL_Rect{app.W-app.W*3/30,0,app.W/30,app.H/25}},
+                                         {FILE_BUTTON, SDL_Rect{0,0,app.W*91/1503,app.H*48/867}},
+                                         {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*48/867}},
+                                         {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*48/867}}}
             },
             {TAB_CODE,    true, {{Motion,       SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Looks,         SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 1 / 609,
-                                                                 app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Sound,            SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 2 / 609,
-                                                                    app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Events, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 3 / 609, app.W * 60 / 1365,
-                                                          app.H * 45 / 609}},
-                                        {Control, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 4 / 609,
-                                                           app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Sensing, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 5 / 609,
-                                                           app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Operators, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 6 / 609,
-                                                             app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {Variables, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 7 / 609,
-                                                             app.W * 60 / 1365, app.H * 45 / 609}},
-                                        {MyBlocks, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 8 / 609,
-                                                            app.W * 60 / 1365, app.H * 45 / 609}}}
+                                         {Looks,         SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 1 / 609,
+                                                                  app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Sound,            SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 2 / 609,
+                                                                     app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Events, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 3 / 609, app.W * 60 / 1365,
+                                                           app.H * 45 / 609}},
+                                         {Control, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 4 / 609,
+                                                            app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Sensing, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 5 / 609,
+                                                            app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Operators, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 6 / 609,
+                                                              app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Variables, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 7 / 609,
+                                                              app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {MyBlocks, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 8 / 609,
+                                                             app.W * 60 / 1365, app.H * 45 / 609}}}
             }};
 
     Theme light, color;
@@ -253,18 +295,16 @@ int main( int argc, char* argv[]) {
     }
     app.font["Roman11"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(11*scale));
     app.font["Bold12"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
+    app.font["Bold13"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(13*scale));
     app.font["Bold14"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(14*scale));
 
 
-  //
+    //
 
     TabTexture texture;
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
 
 
-
-    SDL_SetRenderDrawColor(app.renderer,230,240,255,255);
-    SDL_RenderClear(app.renderer);
 
 
     for(auto &it1:tabButtons)
@@ -301,15 +341,21 @@ int main( int argc, char* argv[]) {
         {
             updateKeyboardButtons(keyboardButton,e);
             updateButtonRectAndMouseState(mouse,tabButtons,e);
-            updateWindowState(app,e);
         }
         keyboardButtonActions(keyboardButton,app,tabButtons);
+        RenderTextureGeneral(tabButtons[0].buttons,app,ColorGeneral,tabTexture,buttonTextures);
+        SDL_RenderCopy(app.renderer,tabTexture.general, nullptr, nullptr);
         AllTabButtonActions(tabButtons,app,color,texture);
+
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
 
     }
 
+
+
+    SDL_DestroyTexture(tabTexture.general);
+    DestroyButtonTexture(buttonTextures);
 
 
 
@@ -323,6 +369,7 @@ int main( int argc, char* argv[]) {
     }
     SDL_DestroyTexture(texture.code);
     SDL_DestroyTexture(texture.general);
+
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     TTF_Quit();
@@ -331,15 +378,12 @@ int main( int argc, char* argv[]) {
     return 0;
 }
 
-
-
-
+//// Mamad function
 
 bool isMouseInRect(MouseState &mouse,SDL_Rect &rect)
 {
     return mouse.x>rect.x && mouse.x<rect.x+rect.w && mouse.y>rect.y && mouse.y<rect.y+rect.h;
 }
-
 void resetKeyboardButtons(KeyboardButton &key)
 {
     memset(key.keyDown,false,sizeof(key.keyDown));  // can use sizeof(key.keyDown)=512
@@ -362,7 +406,6 @@ void resetMouseState(MouseState &mouse)
     mouse.leftUp=false;
     mouse.leftDown=false;
 }
-
 void updateKeyboardButtons(KeyboardButton &key,SDL_Event &e)
 {
     if(e.type==SDL_KEYDOWN && e.key.repeat==0)
@@ -460,24 +503,6 @@ void updateButtonRectAndMouseState(MouseState &mouse,std:: vector<AllTabButtons>
     }
 
 }
-void updateWindowState(AppState &app,SDL_Event &e)
-{
-    if(e.type==SDL_WINDOWEVENT)
-    {
-        if(e.window.event==SDL_WINDOWEVENT_SIZE_CHANGED)
-        {
-            app.W=e.window.data1;
-            app.H=e.window.data2;
-        }
-        if(e.window.event==SDL_WINDOWEVENT_MOVED)
-        {
-            app.X=e.window.data1;
-            app.Y=e.window.data2;
-        }
-
-    }
-}
-
 void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTabButtons> &tab)
 {
     if(key.keyDown[SDL_SCANCODE_ESCAPE])
@@ -530,8 +555,6 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
 }
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color)
 {
-    SDL_SetRenderDrawColor(app.renderer,60,63,63,255);
-   // SDL_RenderClear(app.renderer);
     float L=6;
 
     for(auto &it:buttons)
@@ -604,10 +627,55 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
                 }
             }
         }
+        else if(it.ID==SETTING_BUTTON)
+        {
+            if(it.onButton)
+            {
+//                SDL_SetRenderDrawBlendMode(app.renderer,SDL_BLENDMODE_BLEND);
+//                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,60);
+//                SDL_RenderFillRect(app.renderer,&it.rect);
+            }
+
+
+            if(it.leftClick )
+            {
+                it.onButton=false;
+            }
+
+        }
+        else if(it.ID==FILE_BUTTON)
+        {
+            if(it.onButton)
+            {
+//                SDL_SetRenderDrawColor(app.renderer,79,82,84,50);
+//                SDL_RenderFillRect(app.renderer,&it.rect);
+            }
+
+
+            if(it.leftClick )
+            {
+                it.onButton=false;
+            }
+
+        }
+        else if(it.ID==EDIT_BUTTON)
+        {
+            if(it.onButton)
+            {
+//
+//
+            }
+
+
+            if(it.leftClick )
+            {
+                it.onButton=false;
+            }
+
+        }
 
     }
 }
-
 void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture)
 {
     // با تغییر ابعاد دکمه در وکتور در همه  جا عوض نمیشه
@@ -695,7 +763,6 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
     }
 
 }
-
 void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &tex)
 {
     if(tex.code)
@@ -752,26 +819,6 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
 
     SDL_SetRenderTarget(app.renderer,NULL);
 }
-
-
-void active(int id,std:: vector<AllTabButtons> &tab,bool ac)
-{
-    for(auto &it1:tab)
-    {
-        if(it1.ID==id)
-        {
-            it1.active=ac;
-            return;
-        }
-        for(auto &it2:it1.buttons)
-            if(it2.ID==id)
-            {
-                it2.active=ac;
-                return;
-            }
-    }
-
-}
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color)
 {
     TTF_Font* Font=app.font[F];
@@ -793,3 +840,147 @@ void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color
     SDL_RenderCopy(app.renderer, texture, NULL, &rr);
     SDL_DestroyTexture(texture);
 }
+void active(int id,std:: vector<AllTabButtons> &tab,bool ac)
+{
+    for(auto &it1:tab)
+    {
+        if(it1.ID==id)
+        {
+            it1.active=ac;
+            return;
+        }
+        for(auto &it2:it1.buttons)
+            if(it2.ID==id)
+            {
+                it2.active=ac;
+                return;
+            }
+    }
+
+}
+
+//// Golab function
+
+SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file){
+    SDL_Surface* surface = IMG_Load(file.c_str());
+    if(!surface)
+    {
+        std::cerr<<"Failed to load image: "<< file<<"Error:"<<IMG_GetError()<<std::endl;
+        return nullptr;
+    }
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer,surface) ;
+    SDL_FreeSurface(surface);
+    return texture;
+
+}
+ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer){
+    ButtonTextures textures;
+    textures.setting = LoadTexture(renderer,"set.png");
+    textures.file = LoadTexture(renderer,"file.png");
+    textures.flesh = LoadTexture(renderer,"flesh.png");
+    textures.edit = LoadTexture(renderer,"edit.png");
+    return textures;
+}
+void DestroyButtonTexture(ButtonTextures &textures)
+{
+    if(textures.setting) { SDL_DestroyTexture(textures.setting); textures.setting = nullptr; }
+    if(textures.file)    { SDL_DestroyTexture(textures.file); textures.file = nullptr; }
+    if(textures.flesh)   { SDL_DestroyTexture(textures.flesh); textures.flesh = nullptr; }
+    if(textures.edit)    { SDL_DestroyTexture(textures.edit); textures.edit = nullptr; }
+}
+void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures){
+    //------
+    if(tabTexture.general){
+        SDL_DestroyTexture(tabTexture.general);
+        tabTexture.general= nullptr;
+    }
+    tabTexture.general= SDL_CreateTexture(app.renderer,SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,app.W,app.H);
+    SDL_SetTextureBlendMode(tabTexture.general,SDL_BLENDMODE_BLEND);
+
+
+    //----------
+    SDL_SetRenderTarget(app.renderer,tabTexture.general);
+    SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
+    SDL_RenderClear(app.renderer);
+
+    // نوار بالا
+    int barHeight =0;
+    for(auto & it : buttons)
+    {
+        if(it.ID == FILE_BUTTON)
+        { barHeight = it.rect.h;
+            break;
+
+        }
+    }
+    SDL_Rect topBar ={0,0,app.W,barHeight};
+    SDL_SetRenderDrawColor(app.renderer,color.topBar.r,color.topBar.g,color.topBar.b,color.topBar.a);
+    SDL_RenderFillRect(app.renderer,&topBar);
+
+
+    // ایکون ها
+
+    for(auto& it :buttons)
+    {
+        if(it.ID==SETTING_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
+            std::string u="Settings";
+            SDL_Rect set={app.W*208/1503,app.H*14/867,20,20};
+            SDL_Rect flesh={app.W*291/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.setting, nullptr,&set);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*259/1503,app.H*23/867,u,"Bold12",color.white);
+
+        }
+        else if(it.ID==EDIT_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
+            std::string u="Edit";
+            SDL_Rect edit={app.W*108/1503,app.H*14/867,21,20};
+            SDL_Rect flesh={app.W*163/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.edit, nullptr,&edit);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*145/1503,app.H*23/867,u,"Bold12",color.white);
+
+
+        }
+        else if(it.ID==FILE_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
+            std::string u="File";
+            SDL_Rect file={app.W*15/1503,app.H*14/867,21,20};
+            SDL_Rect flesh={app.W*72/1503,app.H*20/867,8,5};
+            SDL_RenderCopy(app.renderer, buttonTextures.file, nullptr, &file);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
+            text(app,app.W*50/1503,app.H*23/867,u,"Bold12",color.white);
+
+
+        }
+
+
+    }
+    SDL_SetRenderTarget(app.renderer,nullptr);
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
