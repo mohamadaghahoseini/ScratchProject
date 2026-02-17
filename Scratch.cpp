@@ -7,7 +7,6 @@
 #include <map>
 #include <string>
 
-#define string(x) #x
 //   Tab names
 constexpr int CLOSE_BUTTON=9;
 constexpr int WINDOW_BUTTON=10;
@@ -137,6 +136,24 @@ struct TabTexture {
     SDL_Texture* code= nullptr;
 };
 
+enum struct BlockID {Empty };
+enum struct BlockType {Empty };
+
+struct Block{
+    int index;
+    BlockID ID;
+    BlockType type;
+    BlockID next;
+
+    SDL_Rect rect;
+    int startloopindex;    // only for loops
+    int endloopindex;
+
+    int parametr=0;
+    std::string text;
+
+};
+
 // bool function
 bool isMouseInRect(MouseState &mouse,SDL_Rect &rect);
 
@@ -156,9 +173,9 @@ void updateWindowState(AppState &app,SDL_Event &e);
 // عملیات مربوط را در هر فریم انجام میدهد با توجه به توابع مربوط به دکمه ها
 void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTabButtons> &tab);
 void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &color,TabTexture &texture);
-void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGeneralTab &color);      // need to fix
-void RenderTextureCodeTab(std::vector<ButtonRect> buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
-void RenderCodeTap(std::vector<ButtonRect> buttons, AppState &app, ThemeCodeTab &,TabTexture &tex);
+void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color);      // need to fix
+void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
+void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &,TabTexture &tex);
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac=true);
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color);
 
@@ -189,7 +206,7 @@ int main( int argc, char* argv[]) {
 
 
     SDL_Renderer *renderer;
-    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED || SDL_RENDERER_TARGETTEXTURE ||SDL_RENDERER_PRESENTVSYNC);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     app.renderer = renderer;
     // SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
@@ -244,7 +261,7 @@ int main( int argc, char* argv[]) {
     TabTexture texture;
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
 
-    SDL_SetTextureBlendMode(texture.general,SDL_BLENDMODE_BLEND);
+
 
     SDL_SetRenderDrawColor(app.renderer,230,240,255,255);
     SDL_RenderClear(app.renderer);
@@ -511,7 +528,7 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
 
             }
 }
-void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGeneralTab &color)
+void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color)
 {
     SDL_SetRenderDrawColor(app.renderer,60,63,63,255);
    // SDL_RenderClear(app.renderer);
@@ -590,7 +607,8 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
 
     }
 }
-void RenderCodeTap(std::vector<ButtonRect> buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture)
+
+void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture)
 {
     // با تغییر ابعاد دکمه در وکتور در همه  جا عوض نمیشه
     for(auto &it:buttons)
@@ -677,9 +695,11 @@ void RenderCodeTap(std::vector<ButtonRect> buttons, AppState &app, ThemeCodeTab 
     }
 
 }
-void RenderTextureCodeTab(std::vector<ButtonRect> buttons,AppState &app,ThemeCodeTab &color,TabTexture &tex)
-{
 
+void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &tex)
+{
+    if(tex.code)
+        SDL_DestroyTexture(tex.code);
 
     tex.code=SDL_CreateTexture(app.renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET,app.W, app.H);
     SDL_SetTextureBlendMode(tex.code,SDL_BLENDMODE_BLEND);
