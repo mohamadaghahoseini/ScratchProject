@@ -151,6 +151,7 @@ struct Block{
 
     int parametr=0;
     std::string text;
+
 };
 
 // bool function
@@ -606,6 +607,7 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 
     }
 }
+
 void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture)
 {
     // با تغییر ابعاد دکمه در وکتور در همه  جا عوض نمیشه
@@ -693,6 +695,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
     }
 
 }
+
 void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &tex)
 {
     if(tex.code)
