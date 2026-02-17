@@ -83,6 +83,7 @@ struct ThemeGeneralTab{
     SDL_Color minimizeButton;
     SDL_Color minimizeButtonMouse;
     SDL_Color topBar ={133,92,214,225};
+    SDL_Color topBarhaber={113,78,182,255};
     SDL_Color white={255,255,255,255};
 };
 struct Theme{
@@ -125,6 +126,7 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
 void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures);
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
 ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer);
+void DestroyButtonTexture(ButtonTextures &textures);
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color);
 
 
@@ -235,14 +237,8 @@ int main( int argc, char* argv[])
     }
 
 
-
-
-
-
-
-
-
-
+    SDL_DestroyTexture(tabTexture.general);
+    DestroyButtonTexture(buttonTextures);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     TTF_Quit();
@@ -472,8 +468,9 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
         {
             if(it.onButton)
             {
-                SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+//                SDL_SetRenderDrawBlendMode(app.renderer,SDL_BLENDMODE_BLEND);
+//                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,60);
+//                SDL_RenderFillRect(app.renderer,&it.rect);
             }
 
 
@@ -487,8 +484,8 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
         {
             if(it.onButton)
             {
-                SDL_SetRenderDrawColor(app.renderer,79,82,84,50);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+//                SDL_SetRenderDrawColor(app.renderer,79,82,84,50);
+//                SDL_RenderFillRect(app.renderer,&it.rect);
             }
 
 
@@ -502,8 +499,8 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
         {
             if(it.onButton)
             {
-                SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+//                SDL_SetRenderDrawColor(app.renderer,79,82,84,255);
+//                SDL_RenderFillRect(app.renderer,&it.rect);
             }
 
 
@@ -519,6 +516,10 @@ void RenderGeneralTap(std::vector<ButtonRect> buttons, AppState &app, ThemeGener
 }
 void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures){
     //------
+    if(tabTexture.general){
+        SDL_DestroyTexture(tabTexture.general);
+        tabTexture.general= nullptr;
+    }
     tabTexture.general= SDL_CreateTexture(app.renderer,SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,app.W,app.H);
     SDL_SetTextureBlendMode(tabTexture.general,SDL_BLENDMODE_BLEND);
 
@@ -548,6 +549,11 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
     for(auto& it :buttons)
     {
         if(it.ID==SETTING_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+               SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
             std::string u="Settings";
             SDL_Rect set={app.W*208/1503,app.H*14/867,20,20};
             SDL_Rect flesh={app.W*291/1503,app.H*20/867,8,5};
@@ -557,6 +563,11 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 
         }
         else if(it.ID==EDIT_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
             std::string u="Edit";
             SDL_Rect edit={app.W*108/1503,app.H*14/867,21,20};
             SDL_Rect flesh={app.W*163/1503,app.H*20/867,8,5};
@@ -567,6 +578,11 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 
         }
         else if(it.ID==FILE_BUTTON){
+            if(it.onButton){
+                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+
+            }
             std::string u="File";
             SDL_Rect file={app.W*15/1503,app.H*14/867,21,20};
             SDL_Rect flesh={app.W*72/1503,app.H*20/867,8,5};
@@ -613,6 +629,14 @@ ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer){
     textures.edit = LoadTexture(renderer,"edit.png");
     return textures;
 }
+void DestroyButtonTexture(ButtonTextures &textures)
+{
+    if(textures.setting) { SDL_DestroyTexture(textures.setting); textures.setting = nullptr; }
+    if(textures.file)    { SDL_DestroyTexture(textures.file); textures.file = nullptr; }
+    if(textures.flesh)   { SDL_DestroyTexture(textures.flesh); textures.flesh = nullptr; }
+    if(textures.edit)    { SDL_DestroyTexture(textures.edit); textures.edit = nullptr; }
+}
+
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color)
 {
     TTF_Font* Font=app.font[F];
