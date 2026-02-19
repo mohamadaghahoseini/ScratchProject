@@ -44,6 +44,11 @@ constexpr int MyBlocks=8;
 constexpr int WorkSpace=17;
 
 
+//------------------ sprite names
+constexpr int gorbaFront=100;
+constexpr int gorbaBack=101;
+
+
 // 30 baray har page yeki dar mian
 
 constexpr int move=200;
@@ -66,14 +71,6 @@ constexpr int goToXYTextInput2=1011;
 
 // structs
 
-struct Parameter{
-    int move=10;
-    std::string moveText="10";
-    int turnRDegrees=15;
-    std::string turnRDegreesText="15";
-    int turnLDegrees=15;
-    std::string turnLDegreesText="15";
-};
 enum struct BlockType {Normal,Loop,Start};
 
 struct Block{
@@ -277,6 +274,33 @@ struct Stage{
     int activeBackground=0;
     std::vector<SDL_Texture *> backgrounds;
 };
+struct Sprite {
+    int ID;
+    float scratchX=0;
+    float scratchY=0;
+    float w;
+    float h;
+    SDL_Texture *texture = nullptr;
+    double angle=0.0;
+    double scale=1.0;
+    bool show =true;
+
+
+    double dx=0.0;
+    double dy=0.0;
+
+//// Mamad function
+
+    int layer=0;
+   // std::string costume;
+    //std::map<std::,std::
+};
+struct Stage{
+    SDL_Rect rect;
+    std::vector<Sprite> sprites;
+    int activeBackground=0;
+    std::vector<SDL_Texture *> backgrounds;
+};
 
 
 //// Mamad function
@@ -361,9 +385,9 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-   // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-      renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
@@ -381,6 +405,7 @@ int main( int argc, char* argv[]) {
                                          {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*56/867}},
                                          {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*56/867}},
                                          {CODE_BUTTON, SDL_Rect{0,app.H*67/609,app.W*95/1503,app.H*25/609}},
+                                         {SOUNDS_BUTTON, SDL_Rect{app.W*215/1503,app.H*67/609,app.W*105/1503,app.H*25/609}},
                                          {COSTUMES_BUTTON, SDL_Rect{app.W*95/1503,app.H*67/609,app.W*110/1503,app.H*25/609}},
                                          {SOUNDS_BUTTON, SDL_Rect{app.W*205/1503,app.H*67/609,app.W*85/1503,app.H*25/609}},
                                          {GO_BUTTON, SDL_Rect{app.W*950/1503,app.H*64/609,app.W*33/1503,app.H*31/867}},
@@ -397,7 +422,7 @@ int main( int argc, char* argv[]) {
                                          {Operators, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 6 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Variables, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 7 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {MyBlocks, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 8 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
-                                         {WorkSpace, SDL_Rect{app.W*250/1365,app.H*90/610,app.W*853/1365-app.W*250/1365,app.H-app.H*90/559}},
+                                         {WorkSpace, SDL_Rect{app.W*250/1365,app.H*90/559,app.W*853/1365-15*app.W/1365-app.W*250/1365,app.H-app.H*90/559}}}
                                          {move, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 101, 38}},
                                          {turnRDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*1/610,128,38}},
                                          {turnLDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*2/610,128,38}},
@@ -497,6 +522,7 @@ int main( int argc, char* argv[]) {
         RenderTextureGeneral(tabButtons[0].buttons,app,ColorGeneral,tabTexture,buttonTextures);
         SDL_RenderCopy(app.renderer,tabTexture.general, nullptr, nullptr);
         AllTabButtonActions(tabButtons,app,color,texture,mouse);
+        RenderStage(app,stage,gorba);
 
         SetCursor(app);
         SDL_RenderPresent(renderer);
@@ -513,6 +539,7 @@ int main( int argc, char* argv[]) {
     SDL_FreeCursor(app.cursorArrow);
     SDL_FreeCursor(app.cursorIBeam);
     SDL_FreeCursor(app.cursorHand);
+
 
     SDL_DestroyTexture(app.textureHelperImage);
     SDL_DestroyTexture(app.textureHelperText);
@@ -1266,7 +1293,7 @@ void image(AppState &app,int x,int y,double scale,std::string I,bool xyMiddle,in
     app.textureHelperImage= IMG_LoadTexture(app.renderer,I.c_str());
     if(!app.textureHelperImage)
     {
-        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n"<<I;
+        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n";
         SDL_DestroyTexture(app.textureHelperImage);
         app.endProgram=true;
         return;
@@ -1566,12 +1593,21 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
                 roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
                                230, 240, 255, 255);
 
+        }
+        else if (it.ID == COSTUMES_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 95 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
             }
             std::string u = "Costumes";
             SDL_Rect costom = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.custumes, nullptr, &costom);
             text(app, costom.x + 22, costom.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
-
 
         }
         else if (it.ID == SOUNDS_BUTTON) {
@@ -1583,12 +1619,21 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
                 roundedBoxRGBA(app.renderer, 1 + 205 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
                                230, 240, 255, 255);
 
+        }
+        else if (it.ID == SOUNDS_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 215 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
             }
             std::string u = "Sound";
             SDL_Rect sound = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
             text(app, sound.x + 22, sound.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
-
 
         } else if (it.ID == GO_BUTTON) {
             if (it.onButton) {
@@ -1610,6 +1655,28 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
         }
 
+        } else if (it.ID == GO_BUTTON) {
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Go, nullptr,&u );
+        }
+        else if (it.ID == STOP_BUTTON){
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+3,it.rect.y+3,28,28};
+            SDL_RenderCopy(app.renderer, buttonTextures.Stop, nullptr,&u ); }
+        else if (it.ID == FULLSCREEN_BUTTON) {
+            roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 255, 255, 255, 255);
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3,185,193,206,255);
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
+        }
+
+    }
+    SDL_SetRenderTarget(app.renderer,nullptr);
 
     }
     SDL_SetRenderTarget(app.renderer,nullptr);
