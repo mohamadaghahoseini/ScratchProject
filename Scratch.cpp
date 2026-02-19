@@ -7,6 +7,8 @@
 
 #include <map>
 #include <string>
+#include "nfd.h"
+#include "tinyfiledialogs.h"
 
 //   Button names
 constexpr int CLOSE_BUTTON=9;
@@ -41,13 +43,37 @@ constexpr int MyBlocks=8;
 
 constexpr int WorkSpace=17;
 
-constexpr int moveBlock=18;
-//------------------ sprite names
-constexpr int gorbaFront=100;
-constexpr int gorbaBack=101;
+
+// 30 baray har page yeki dar mian
+
+constexpr int move=200;
+constexpr int turnRDegrees=202;
+constexpr int turnLDegrees=204;
+constexpr int goToRandomPosition=206;
+constexpr int goToMousePointer=208;
+constexpr int goToXY=210;
+
+
+
+
+// 30 baray har page yeki dar mian magar text2
+
+constexpr int moveTextInput=1000;
+constexpr int turnRDegreesTextInput=1002;
+constexpr int turnLDegreesTextInput=1004;
+constexpr int goToXYTextInput1=1010;
+constexpr int goToXYTextInput2=1011;
 
 // structs
 
+struct Parameter{
+    int move=10;
+    std::string moveText="10";
+    int turnRDegrees=15;
+    std::string turnRDegreesText="15";
+    int turnLDegrees=15;
+    std::string turnLDegreesText="15";
+};
 enum struct BlockType {Normal,Loop,Start};
 
 struct Block{
@@ -57,11 +83,15 @@ struct Block{
     int next;
 
     SDL_Rect rect;
+    SDL_Rect rectText1={0,0,0,0};
+    SDL_Rect rectText2={0,0,0,0};
     int startloopindex;    // only for loops
     int endloopindex;
 
-    int parametr=0;
-    std::string text;
+    std::string p1="";
+    std::string p2="";
+
+    std::string image;
 };
 struct AppState{
     bool endProgram=false;
@@ -78,11 +108,31 @@ struct AppState{
 
     SDL_Texture* textureHelperText= nullptr;
     SDL_Texture* textureHelperImage= nullptr;
+
+    bool isTyping=false;
+    bool isOnTextInput=false;
+    bool isOnBlock=false;
+    int IDTextInput;
+
+    SDL_Cursor* cursorArrow= nullptr;
+    SDL_Cursor* cursorIBeam= nullptr;
+    SDL_Cursor* cursorHand= nullptr;
+
+
     // Code Tab
     // در صورت بروز مشکل برای عوض کردن تب ها این بخش چک بشه
     bool activeCodePage[9]= {};
     std::map<std::string,TTF_Font*> font;
     std::vector<Block> block;
+    std::vector<Block> allblock;
+    bool pressedBlock=false;
+    bool inWorkSpace=false;
+    Block blockHelper;
+    SDL_Rect workSpace;
+    int deltaXMouseBlock;
+    int deltaYMouseBlock;
+    int offsetX1, offsetY1, offsetX2, offsetY2;
+    Parameter p;
 };
 
 struct MouseState{
@@ -97,11 +147,13 @@ struct MouseState{
     bool leftDown=false;
     bool leftPressed=false;
     bool leftUp=false;
+
+    bool pressedBlock=false;
 };
 struct ButtonRect{
     int ID;
-    SDL_Rect rect;
-    SDL_Rect srcRect;
+    const SDL_Rect rect;
+    std::string text="";   //only for TextBox
 
     bool onButton=false;
     bool rightClick=false;
@@ -230,7 +282,7 @@ struct Stage{
 //// Mamad function
 
 // bool function
-bool isMouseInRect(MouseState &mouse,SDL_Rect &rect);
+bool isMouseInRect(MouseState &mouse,const SDL_Rect &rect);
 
 // reset function
 // در ابتدای هر فریم bool های لازم را ریست میدهد به دیفالت
@@ -253,7 +305,12 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac=true);
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color,bool xyNotMiddle=false);
 void image(AppState &app,int x,int y,double scale,std::string I,bool xtMiddle=false,int readX=0,int readY=0,double readWScale=1,double readHScale=1);
-
+std::string BlockIDtoImageString(int id);
+bool blockDistanceTest(MouseState &mouse,const Block &c,const std::vector<Block> &a);
+void DrawBlock(AppState &app,Block &block);
+void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mouse);
+void SetCursor(AppState &app);
+void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,KeyboardButton &key);
 //// Golab function
 void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures);
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
@@ -292,6 +349,8 @@ int main( int argc, char* argv[]) {
     SDL_RaiseWindow(window);
     app.window = window;
 
+    SDL_SetWindowFullscreen(app.window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_SetWindowFullscreen(app.window, 0);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
 
     //----------
@@ -302,9 +361,9 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+   // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+      renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
@@ -313,7 +372,7 @@ int main( int argc, char* argv[]) {
 
     // Variable declaration
     int iconSize=40;
-
+    int dis=44;
     std::vector<AllTabButtons> tabButtons = {
             {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                          {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
@@ -338,11 +397,23 @@ int main( int argc, char* argv[]) {
                                          {Operators, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 6 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Variables, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 7 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {MyBlocks, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 8 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
-                                         {WorkSpace, SDL_Rect{app.W*250/1365,app.H*90/559,app.W*853/1365-15*app.W/1365-app.W*250/1365,app.H-app.H*90/559}}
-                                 }
+                                         {WorkSpace, SDL_Rect{app.W*250/1365,app.H*90/610,app.W*853/1365-app.W*250/1365,app.H-app.H*90/559}},
+                                         {move, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 101, 38}},
+                                         {turnRDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*1/610,128,38}},
+                                         {turnLDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*2/610,128,38}},
+                                         {goToRandomPosition, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*3/610,146,38}},
+                                         {goToMousePointer, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*4/610,146,38}},
+                                         {moveTextInput, SDL_Rect{app.W * 70 / 1365+37,app.H * 130 / 610+6,28,23},"10"},
+                                         {turnRDegreesTextInput, SDL_Rect{app.W * 70 / 1365+51,app.H * 130 / 610+app.H*dis*1/610+6,28,23},"15"},
+                                         {turnLDegreesTextInput, SDL_Rect{app.W * 70 / 1365+51,app.H * 130 / 610+app.H*dis*2/610+6,28,23},"15"},
+                                         {goToXY, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*5/610,125,38}},
+                                         {goToXYTextInput1, SDL_Rect{app.W*70/1365+47,app.H*130/610+app.H*dis*5/610+6,28,23},"0"},
+                                         {goToXYTextInput2, SDL_Rect{app.W*70/1365+92,app.H*130/610+app.H*dis*5/610+6,28,23},"0"}
+            }
             }};
     Stage stage;
     Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),0,0,0};
+
 
 
 
@@ -371,8 +442,10 @@ int main( int argc, char* argv[]) {
     app.font["Thin14"]=TTF_OpenFont("fonts/HelveticaNeue-Thin.otf",std::round(14*scale));
 
 
-
     //
+    app.cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    app.cursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    app.cursorHand  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
     TabTexture texture;
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
@@ -417,13 +490,15 @@ int main( int argc, char* argv[]) {
         {
             updateKeyboardButtons(keyboardButton,e);
             updateButtonRectAndMouseState(mouse,tabButtons,e);
+            TextInput(app,tabButtons,e,keyboardButton);
         }
+        CheckIsTyping(app,tabButtons,mouse);
         keyboardButtonActions(keyboardButton,app,tabButtons);
         RenderTextureGeneral(tabButtons[0].buttons,app,ColorGeneral,tabTexture,buttonTextures);
         SDL_RenderCopy(app.renderer,tabTexture.general, nullptr, nullptr);
         AllTabButtonActions(tabButtons,app,color,texture,mouse);
-        RenderStage(app,stage,gorba);
 
+        SetCursor(app);
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
     }
@@ -435,7 +510,9 @@ int main( int argc, char* argv[]) {
 
 
 
-
+    SDL_FreeCursor(app.cursorArrow);
+    SDL_FreeCursor(app.cursorIBeam);
+    SDL_FreeCursor(app.cursorHand);
 
     SDL_DestroyTexture(app.textureHelperImage);
     SDL_DestroyTexture(app.textureHelperText);
@@ -456,7 +533,7 @@ int main( int argc, char* argv[]) {
 
 //// Mamad function
 
-bool isMouseInRect(MouseState &mouse,SDL_Rect &rect)
+bool isMouseInRect(MouseState &mouse,const SDL_Rect &rect)
 {
     return mouse.x>rect.x && mouse.x<rect.x+rect.w && mouse.y>rect.y && mouse.y<rect.y+rect.h;
 }
@@ -528,7 +605,7 @@ void updateButtonRectAndMouseState(MouseState &mouse,std:: vector<AllTabButtons>
         {
             mouse.rightPressed=true;
             mouse.rightDown= true;
-            SDL_GetMouseState(&mouse.xRightDown,&mouse.yRightDown);
+        SDL_GetMouseState(&mouse.xRightDown,&mouse.yRightDown);
         }
 
         // Update Buttons
@@ -647,7 +724,42 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
                 if(it.leftClick)
-                    app.endProgram=true;
+                {
+                    const SDL_MessageBoxButtonData buttons[] = {
+
+                            { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
+                            { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" }
+                    };
+
+                    const SDL_MessageBoxData messageboxdata = {
+                            SDL_MESSAGEBOX_INFORMATION,
+                            app.window,
+                            "Exit Program",
+                            "Are you sure you want to exit? Any unsaved changes will be lost.",
+                            SDL_arraysize(buttons),
+                            buttons,
+                            NULL
+                    };
+
+                    int buttonid;
+                    if (SDL_ShowMessageBox(&messageboxdata, &buttonid) == 0)
+                    {
+                        if (buttonid == 1)
+                        {
+                            app.endProgram = true;
+                        }
+                    }
+//                    int choice = tinyfd_messageBox(
+//                            "Exit Program",
+//                            "Are you sure you want to exit? Any unsaved changes will be lost.",
+//                            "yesno",
+//                            "question",
+//                            1
+//                    );
+//                    if (choice == 1) { // اگر کاربر Yes را انتخاب کرد
+//                        app.endProgram = true;
+//                    }
+                }
                 aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
                 aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
                 aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
@@ -667,7 +779,8 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
                 SDL_Rect rectWindow={it.rect.x+it.rect.w/2-it.rect.w/10,it.rect.y+it.rect.h/2-it.rect.w/10,it.rect.w*2/10,it.rect.w*2/10};
                 SDL_RenderDrawRect(app.renderer,&rectWindow);
             }
-//           if(it.leftClick)
+       //    if(it.leftClick)
+
 //            {
 //                if(app.maximize)
 //                {
@@ -756,21 +869,63 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 }
 void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse)
 {
-    // با تغییر ابعاد دکمه در وکتور در همه  جا عوض نمیشه
     for(auto &it:buttons)
     {
         if(0<=it.ID && it.ID<=8 && it.leftClick)
         {
             memset(app.activeCodePage,0,sizeof(app.activeCodePage));
             app.activeCodePage[it.ID]=true;
+            for(auto &it2:buttons)
+            {
+                if(it.ID*30+200<=it2.ID && it2.ID<it.ID*30+200+30)
+                    it2.active=true;
+                else if(200<=it2.ID && it2.ID<=500)
+                    it2.active=false;
+                if(it.ID*30+1000<=it2.ID && it2.ID<it.ID*30+1000+30)
+                    it2.active=true;
+                else if(1000<=it2.ID && it2.ID<=1500)
+                    it2.active=false;
+            }
             RenderTextureCodeTab(buttons,app,color,texture);
             break;
         }
     }
+
     SDL_RenderCopy(app.renderer,texture.code,NULL,NULL);
-    for(auto it:buttons)
+
+    if(!app.allblock.empty())
     {
-        if(it.ID<=8 ,0<=it.ID)
+        for(auto &it:app.allblock)
+        {
+           DrawBlock(app,it);
+        }
+    }
+
+    for(auto &it:buttons)
+    {
+        if(it.ID==WorkSpace)
+        {
+            if(it.onButton)
+                app.inWorkSpace= true;
+            else
+                app.inWorkSpace=false;
+            app.workSpace=it.rect;
+        }
+    }
+
+    for(auto &it:buttons)
+    {
+        if(1000 <= it.ID && it.ID <= 1500 && it.active)
+        {
+            text(app,it.rect.x+13,it.rect.y+12,it.text,"Roman13",SDL_Color{87, 94, 117,255});
+        }
+    }
+
+    app.isOnBlock=false;
+
+    for(auto &it:buttons)
+    {
+        if(it.ID<=MyBlocks && Motion<=it.ID)
         {
             if(it.ID==Motion)
             {
@@ -837,8 +992,116 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
             }
         }
 
+        if(200 <= it.ID && it.ID <= 500 && it.active)
+        {
+            if(it.onButton)
+            {
+                app.isOnBlock=true;
+            }
+            if(it.leftPressed && !app.isOnTextInput)
+            {
+                app.pressedBlock=true;
+                app.blockHelper.ID=it.ID;
+                app.blockHelper.index=app.block.size()-1;
+                app.blockHelper.image= BlockIDtoImageString(it.ID);
+                app.blockHelper.rect.w=it.rect.w;
+                app.blockHelper.rect.h=it.rect.h;
+
+                app.blockHelper.rectText1 = {0,0,0,0};
+                app.blockHelper.rectText2 = {0,0,0,0};
+                for(auto &it2:buttons)
+                {
+                    if(it2.ID==app.blockHelper.ID+800)
+                    {
+                        app.blockHelper.p1=it2.text;
+                        app.blockHelper.rectText1=it2.rect;
+                    }
+                    if(it2.ID==app.blockHelper.ID+801)
+                    {
+                        app.blockHelper.p2=it2.text;
+                        app.blockHelper.rectText2=it2.rect;
+                    }
+                }
+                app.deltaXMouseBlock = mouse.xLeftDown - it.rect.x;
+                app.deltaYMouseBlock = mouse.yLeftDown - it.rect.y;
+                app.blockHelper.rect.x=mouse.x-app.deltaXMouseBlock;
+                app.blockHelper.rect.y=mouse.y-app.deltaYMouseBlock;
+                if(app.blockHelper.rectText1.w != 0)
+                {
+                    app.offsetX1 = app.blockHelper.rectText1.x - it.rect.x;
+                    app.offsetY1 = app.blockHelper.rectText1.y - it.rect.y;
+                }
+                if(app.blockHelper.rectText2.w != 0)
+                {
+                    app.offsetX2 = app.blockHelper.rectText2.x - it.rect.x;
+                    app.offsetY2 = app.blockHelper.rectText2.y - it.rect.y;
+                }
+
+                if (app.blockHelper.rectText1.w != 0)
+                {
+                    app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                    app.blockHelper.rectText1.y = app.blockHelper.rect.y +  app.offsetY1 ;
+                }
+                if (app.blockHelper.rectText2.w != 0)
+                {
+                    app.blockHelper.rectText2.x = app.blockHelper.rect.x +  app.offsetX2;
+                    app.blockHelper.rectText2.y = app.blockHelper.rect.y +   app.offsetY2;
+                }
+
+
+                DrawBlock(app,app.blockHelper);
+
+
+            }
+            if( app.pressedBlock && mouse.leftUp)
+            {
+                if(mouse.x-app.deltaXMouseBlock+app.blockHelper.rect.w<=app.workSpace.x+app.workSpace.w && app.workSpace.x<=mouse.x-app.deltaXMouseBlock)
+                    if(mouse.y-app.deltaYMouseBlock+app.blockHelper.rect.h<=app.workSpace.y+app.workSpace.h && app.workSpace.y<=mouse.y-app.deltaYMouseBlock)
+                    {
+                        if(blockDistanceTest(mouse,app.blockHelper,app.block))
+                        {
+                            app.blockHelper.rect.x=app.block[app.block.size()-1].rect.x;
+                            app.blockHelper.rect.y=app.block[app.block.size()-1].rect.y+app.block[app.block.size()-1].rect.h-6;
+                            if (app.blockHelper.rectText1.w != 0) {
+                                app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                                app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
+                            }
+                            if (app.blockHelper.rectText2.w != 0) {
+                                app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                                app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
+                            }
+                            app.block.push_back(app.blockHelper);
+                            app.allblock.push_back(app.blockHelper);
+                        }
+                        else
+                        {
+                            app.blockHelper.rect.x=mouse.x-app.deltaXMouseBlock;
+                            app.blockHelper.rect.y=mouse.y-app.deltaYMouseBlock;
+                            if (app.blockHelper.rectText1.w != 0) {
+                                app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                                app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
+                            }
+                            if (app.blockHelper.rectText2.w != 0) {
+                                app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                                app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
+                            }
+                            app.allblock.push_back(app.blockHelper);
+                            if(app.block.empty())
+                            {
+                                app.block.push_back(app.blockHelper);
+                            }
+
+                        }
+                        app.pressedBlock=false;
+                        DrawBlock(app,app.blockHelper);
+                    }
+            }
+        }
 
     }
+
+
+
 
 
 }
@@ -875,10 +1138,50 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
     SDL_RenderFillRect(app.renderer,&motion);
 
     for(auto &it:buttons)
-        if(0<=it.ID && it.ID<=8)
+    {
+        if(Motion<=it.ID && it.ID<=MyBlocks)
         {
+
             if(app.activeCodePage[it.ID])
             {
+                int texty=app.H*106/609;
+                std::string textfont="Bold14";
+                if(it.ID==Motion)
+                {
+                    text(app,app.W*70/1365,texty,"Motion",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Looks)
+                {
+                    text(app,app.W*70/1365,texty,"Looks",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Sound)
+                {
+                    text(app,app.W*70/1365,texty,"Sound",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Events)
+                {
+                    text(app,app.W*70/1365,texty,"Events",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Control)
+                {
+                    text(app,app.W*70/1365,texty,"Control",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Sensing)
+                {
+                    text(app,app.W*70/1365,texty,"Sensing",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Operators)
+                {
+                    text(app,app.W*70/1365,texty,"Operators",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==Variables)
+                {
+                    text(app,app.W*70/1365,texty,"Variables",textfont,SDL_Color{87,94,117,255},true);
+                }
+                else if(it.ID==MyBlocks)
+                {
+                    text(app,app.W*70/1365,texty,"MyBlocks",textfont,SDL_Color{87,94,117,255},true);
+                }
                 SDL_SetRenderDrawColor(app.renderer,color.leftButtonClicked.r,color.leftButtonClicked.g,color.leftButtonClicked.b,color.leftButtonClicked.a);
                 SDL_RenderFillRect(app.renderer,&it.rect);
             }
@@ -888,6 +1191,15 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
             aacircleRGBA(app.renderer,it.rect.w/2,it.rect.y+app.H*17/609,app.H*8.5/609,color.circleBorder[it.ID].r,color.circleBorder[it.ID].g,color.circleBorder[it.ID].b,color.circleBorder[it.ID].a);
 
         }
+        if(200 <= it.ID && it.ID <= 500)
+        {
+            if(it.active)
+                image(app,it.rect.x,it.rect.y,1,BlockIDtoImageString(it.ID));
+        }
+    }
+
+
+
 
 
     roundedRectangleRGBA(app.renderer,-20,y,app.W*853/1365,app.H,15,color.line.r,color.line.g,color.line.b,color.line.a);
@@ -954,7 +1266,7 @@ void image(AppState &app,int x,int y,double scale,std::string I,bool xyMiddle,in
     app.textureHelperImage= IMG_LoadTexture(app.renderer,I.c_str());
     if(!app.textureHelperImage)
     {
-        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n";
+        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n"<<I;
         SDL_DestroyTexture(app.textureHelperImage);
         app.endProgram=true;
         return;
@@ -971,10 +1283,10 @@ void image(AppState &app,int x,int y,double scale,std::string I,bool xyMiddle,in
     }
     else
     {
-        rect.x=x;
-        rect.y=y;
-        rect.w=(double)imageW/scale;
-        rect.h=(double)imageH/scale;
+     rect.x=x;
+    rect.y=y;
+    rect.w=(double)imageW/scale;
+    rect.h=(double)imageH/scale;
     }
 
     SDL_Rect scr;
@@ -989,7 +1301,122 @@ void image(AppState &app,int x,int y,double scale,std::string I,bool xyMiddle,in
     scr.h=readY+(double)imageH*readHScale>imageH ? imageH-readY:(double)imageH*readHScale;
     SDL_RenderCopy(app.renderer,app.textureHelperImage,&scr,&rect);
     SDL_DestroyTexture(app.textureHelperImage);
-    app.textureHelperText = nullptr;
+    app.textureHelperImage = nullptr;
+}
+bool blockDistanceTest(MouseState &mouse,const Block &c,const std::vector<Block> &a)
+{
+    if(a.size()!=0)
+    {
+        SDL_Rect b={mouse.x-(mouse.xLeftDown-c.rect.x),mouse.y-(mouse.yLeftDown-c.rect.y),c.rect.w,c.rect.h};
+        SDL_Rect ar=a[a.size()-1].rect;
+        bool a1=mouse.y-ar.y>=0 && 100>=mouse.y-ar.y;
+        bool a2=mouse.x-ar.x>=0 && mouse.x-ar.x-ar.w<=0;
+        return a1 && a2;
+    }
+    return false;
+}
+void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mouse)
+{
+    app.isOnTextInput=false;
+    for(auto it1:tab)
+        if(it1.active)
+            for(auto it2:it1.buttons)
+            {
+                if(1000<=it2.ID && it2.ID<=1500 && it2.active)
+                {
+                    if(it2.onButton)
+                    {
+                        app.isOnTextInput=true;
+                        if(it2.active && it2.leftClick)
+                        {
+                            app.IDTextInput=it2.ID;
+                            SDL_StartTextInput();
+                            it2.text="";
+                            app.isTyping=true;
+                        }
+                    }
+                }
+            }
+
+    if(app.isTyping)
+    {
+        if(mouse.leftDown && !app.isOnTextInput)
+        {
+            SDL_StopTextInput();
+            app.isTyping=false;
+        }
+    }
+}
+void SetCursor(AppState &app)
+{
+    if(app.isOnTextInput)
+    {
+        SDL_SetCursor(app.cursorIBeam);
+    }
+    else if(app.isOnBlock && !app.isOnTextInput)
+    {
+        SDL_SetCursor(app.cursorHand);
+    }
+    else
+    {
+        SDL_SetCursor(app.cursorArrow);
+    }
+
+}
+void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,KeyboardButton &key)
+{
+    if(!app.isTyping)
+        return;
+    ButtonRect* activeBtn = nullptr;
+    for (auto &tab : tabs) {
+        if (!tab.active) continue;
+        for (auto &btn : tab.buttons) {
+            if (btn.ID == app.IDTextInput) {
+                activeBtn = &btn;
+                break;
+            }
+        }
+    }
+    if (!activeBtn)
+        return;
+
+        if (e.type == SDL_TEXTINPUT) {
+            if (isdigit(e.text.text[0]) || e.text.text[0] == '-') {
+                activeBtn->text += e.text.text;
+            }
+        }
+        if(key.keyDown[SDL_SCANCODE_BACKSPACE])
+            if (!activeBtn->text.empty()) {
+                activeBtn->text.pop_back();
+            }
+    if (key.keyDown[SDL_SCANCODE_RETURN]) {
+        app.isTyping = false;
+        app.IDTextInput = -1;
+        SDL_StopTextInput();
+    }
+}
+std::string BlockIDtoImageString(int id)
+{
+    if(id == move)
+        return "blocks/move.png";
+    else if(id==turnRDegrees)
+        return "blocks/turnRDegrees.png";
+    else if(id==turnLDegrees)
+        return "blocks/turnLDegrees.png";
+    else if(id==goToRandomPosition)
+        return "blocks/goToRandomPosition.png";
+    else if(id==goToMousePointer)
+        return "blocks/goToMousePointer.png";
+    else if(id==goToXY)
+        return "blocks/goToXY.png";
+}
+void DrawBlock(AppState &app,Block &block)
+{
+    image(app,block.rect.x,block.rect.y,1,block.image);
+    if(block.rectText1.w != 0)
+         text(app,block.rectText1.x+13,block.rectText1.y+12,block.p1,"Roman13",SDL_Color{87, 94, 117,255});
+    if(block.rectText2.w != 0)
+        text(app,block.rectText2.x+13,block.rectText2.y+12,block.p2,"Roman13",SDL_Color{87, 94, 117,255});
 }
 
 //// Golab function
