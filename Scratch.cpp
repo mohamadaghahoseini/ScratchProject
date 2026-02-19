@@ -10,16 +10,26 @@
 #include "nfd.h"
 #include "tinyfiledialogs.h"
 
-//   Tab names
+//   Button names
 constexpr int CLOSE_BUTTON=9;
 constexpr int WINDOW_BUTTON=10;
 constexpr int MINIMIZED_BUTTON=11;
 constexpr int FILE_BUTTON=14;
 constexpr int EDIT_BUTTON=15;
 constexpr int SETTING_BUTTON=16;
-// Button names
+constexpr int CODE_BUTTON=17;
+constexpr int COSTUMES_BUTTON=18;
+constexpr int SOUNDS_BUTTON=19;
+constexpr int GO_BUTTON=20;
+constexpr int STOP_BUTTON=21;
+constexpr int FULLSCREEN_BUTTON=22;
+
+
+// tab names
 constexpr int TAB_GENERAL=12;
 constexpr int TAB_CODE=13;
+constexpr int TAB_COSTUMES=14;
+constexpr int TAB_SOUNDS=15;
 
 constexpr int Motion=0;
 constexpr int Looks=1;
@@ -230,8 +240,44 @@ struct ButtonTextures{
     SDL_Texture* file = nullptr;
     SDL_Texture* flesh = nullptr;
     SDL_Texture* edit = nullptr;
+    SDL_Texture * code= nullptr;
+    SDL_Texture * custumes= nullptr;
+    SDL_Texture * sounds= nullptr;
+    SDL_Texture * codeA= nullptr;
+    SDL_Texture * custumesA= nullptr;
+    SDL_Texture * soundsA= nullptr;
+    SDL_Texture * Go= nullptr;
+    SDL_Texture * Stop= nullptr;
+    SDL_Texture * Fullscreen= nullptr;
 
 };
+struct Sprite {
+    int ID;
+    float scratchX=0;
+    float scratchY=0;
+    float w;
+    float h;
+    SDL_Texture *texture = nullptr;
+    double angle=0.0;
+    double scale=1.0;
+    bool show =true;
+
+
+    double dx=0.0;
+    double dy=0.0;
+
+
+    int layer=0;
+   // std::string costume;
+    //std::map<std::,std::
+};
+struct Stage{
+    SDL_Rect rect;
+    std::vector<Sprite> sprites;
+    int activeBackground=0;
+    std::vector<SDL_Texture *> backgrounds;
+};
+
 
 //// Mamad function
 
@@ -270,6 +316,10 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
 ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer);
 void DestroyButtonTexture(ButtonTextures &textures);
+void UpdateSprite (Sprite& s);
+void RenderStage(AppState & app, Stage &stage,Sprite s);
+
+
 
 int main( int argc, char* argv[]) {
     AppState app;
@@ -327,9 +377,16 @@ int main( int argc, char* argv[]) {
             {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                          {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
                                          {MINIMIZED_BUTTON, SDL_Rect{app.W-app.W*3/30,0,app.W/30,app.H/25}},
-                                         {FILE_BUTTON, SDL_Rect{0,0,app.W*91/1503,app.H*48/867}},
-                                         {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*48/867}},
-                                         {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*48/867}}}
+                                         {FILE_BUTTON, SDL_Rect{0,0,app.W*91/1503,app.H*56/867}},
+                                         {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*56/867}},
+                                         {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*56/867}},
+                                         {CODE_BUTTON, SDL_Rect{0,app.H*67/609,app.W*95/1503,app.H*25/609}},
+                                         {COSTUMES_BUTTON, SDL_Rect{app.W*95/1503,app.H*67/609,app.W*110/1503,app.H*25/609}},
+                                         {SOUNDS_BUTTON, SDL_Rect{app.W*205/1503,app.H*67/609,app.W*85/1503,app.H*25/609}},
+                                         {GO_BUTTON, SDL_Rect{app.W*950/1503,app.H*64/609,app.W*33/1503,app.H*31/867}},
+                                         {STOP_BUTTON, SDL_Rect{app.W*983/1503,app.H*64/609,app.W*33/1503,app.H*31/867}},
+                                         {FULLSCREEN_BUTTON, SDL_Rect{app.W*1462/1503,app.H*64/609,app.W*33/1503,app.H*31/867}}}
+
             },
             {TAB_CODE,    true, {{Motion,       SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Looks,         SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 1 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
@@ -354,6 +411,11 @@ int main( int argc, char* argv[]) {
                                          {goToXYTextInput2, SDL_Rect{app.W*70/1365+92,app.H*130/610+app.H*dis*5/610+6,28,23},"0"}
             }
             }};
+    Stage stage;
+    Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),0,0,0};
+
+
+
 
 
     Theme light, color;
@@ -387,6 +449,8 @@ int main( int argc, char* argv[]) {
 
     TabTexture texture;
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
+    //==========================
+
 
 
 
@@ -421,6 +485,7 @@ int main( int argc, char* argv[]) {
         resetKeyboardButtons(keyboardButton);
         resetButtonRect(tabButtons);
         resetMouseState(mouse);
+
         while(SDL_PollEvent(&e))
         {
             updateKeyboardButtons(keyboardButton,e);
@@ -1177,6 +1242,7 @@ void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color
     }
 
 }
+
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac)
 {
     for(auto &it1:tab)
@@ -1369,10 +1435,21 @@ SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file){
 }
 ButtonTextures LoadAllButtonTexture(SDL_Renderer* renderer){
     ButtonTextures textures;
-    textures.setting = LoadTexture(renderer,"set.png");
-    textures.file = LoadTexture(renderer,"file.png");
-    textures.flesh = LoadTexture(renderer,"flesh.png");
-    textures.edit = LoadTexture(renderer,"edit.png");
+    textures.setting = LoadTexture(renderer,"icons/set.png");
+    textures.file = LoadTexture(renderer,"icons/file.png");
+    textures.flesh = LoadTexture(renderer,"icons/flesh.png");
+    textures.edit = LoadTexture(renderer,"icons/edit.png");
+    textures.code= LoadTexture(renderer,"icons/code.png");
+    textures.custumes= LoadTexture(renderer,"icons/brush.png");
+    textures.sounds= LoadTexture(renderer,"icons/sound.png");
+    textures.codeA= LoadTexture(renderer,"icons/codeA.png");
+    textures.custumesA= LoadTexture(renderer,"icons/brushA.png");
+    textures.soundsA= LoadTexture(renderer,"icons/soundA.png");
+    textures.Go= LoadTexture(renderer,"icons/Go.png");
+    textures.Stop= LoadTexture(renderer,"icons/Stop.png");
+    textures.Fullscreen= LoadTexture(renderer,"icons/Fullscreen.png");
+
+
     return textures;
 }
 void DestroyButtonTexture(ButtonTextures &textures)
@@ -1394,7 +1471,7 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 
     //----------
     SDL_SetRenderTarget(app.renderer,tabTexture.general);
-    SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
+    SDL_SetRenderDrawColor(app.renderer,230,240,255,255);
     SDL_RenderClear(app.renderer);
 
     // نوار بالا
@@ -1410,55 +1487,127 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
     SDL_Rect topBar ={0,0,app.W,barHeight};
     SDL_SetRenderDrawColor(app.renderer,color.topBar.r,color.topBar.g,color.topBar.b,color.topBar.a);
     SDL_RenderFillRect(app.renderer,&topBar);
+    //صفحه استیج
+    SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
+    roundedBoxRGBA(app.renderer,app.W*950/1503,app.H*90/609,app.W*1496/1503,app.H*366/609,15*app.W/1365,255,255,255,255);
+    roundedRectangleRGBA(app.renderer,app.W*950/1503,app.H*90/609,app.W*1496/1503,app.H*366/609,15*app.W/1365,185,193,206,255);
 
 
     // ایکون ها
 
-    for(auto& it :buttons)
-    {
-        if(it.ID==SETTING_BUTTON){
-            if(it.onButton){
-                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+    for(auto& it :buttons) {
+        if (it.ID == SETTING_BUTTON) {
+            if (it.onButton) {
+                SDL_SetRenderDrawColor(app.renderer, color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,
+                                       255);
+                SDL_RenderFillRect(app.renderer, &it.rect);
 
             }
-            std::string u="Settings";
-            SDL_Rect set={app.W*208/1503,app.H*14/867,20,20};
-            SDL_Rect flesh={app.W*291/1503,app.H*20/867,8,5};
-            SDL_RenderCopy(app.renderer, buttonTextures.setting, nullptr,&set);
-            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
-            text(app,app.W*259/1503,app.H*23/867,u,"Bold12",color.white);
+            std::string u = "Settings";
+            SDL_Rect set = {app.W * 208 / 1503, app.H * 19 / 867, 20, 20};
+            SDL_Rect flesh = {app.W * 291 / 1503, app.H * 25 / 867, 8, 5};
+            SDL_RenderCopy(app.renderer, buttonTextures.setting, nullptr, &set);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr, &flesh);
+            text(app, app.W * 259 / 1503, app.H * 28 / 867, u, "Bold12", color.white);
 
         }
-        else if(it.ID==EDIT_BUTTON){
-            if(it.onButton){
-                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+        else if (it.ID == EDIT_BUTTON) {
+            if (it.onButton) {
+                SDL_SetRenderDrawColor(app.renderer, color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,
+                                       255);
+                SDL_RenderFillRect(app.renderer, &it.rect);
 
             }
-            std::string u="Edit";
-            SDL_Rect edit={app.W*108/1503,app.H*14/867,21,20};
-            SDL_Rect flesh={app.W*163/1503,app.H*20/867,8,5};
-            SDL_RenderCopy(app.renderer, buttonTextures.edit, nullptr,&edit);
-            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
-            text(app,app.W*145/1503,app.H*23/867,u,"Bold12",color.white);
+            std::string u = "Edit";
+            SDL_Rect edit = {app.W * 108 / 1503, app.H * 19 / 867, 21, 20};
+            SDL_Rect flesh = {app.W * 163 / 1503, app.H * 25 / 867, 8, 5};
+            SDL_RenderCopy(app.renderer, buttonTextures.edit, nullptr, &edit);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr, &flesh);
+            text(app, app.W * 145 / 1503, app.H * 28 / 867, u, "Bold12", color.white);
 
 
         }
-        else if(it.ID==FILE_BUTTON){
-            if(it.onButton){
-                SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r,color.topBarhaber.g,color.topBarhaber.b,255);
-                SDL_RenderFillRect(app.renderer,&it.rect);
+        else if (it.ID == FILE_BUTTON) {
+            if (it.onButton) {
+                SDL_SetRenderDrawColor(app.renderer, color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,
+                                       255);
+                SDL_RenderFillRect(app.renderer, &it.rect);
 
             }
-            std::string u="File";
-            SDL_Rect file={app.W*15/1503,app.H*14/867,21,20};
-            SDL_Rect flesh={app.W*72/1503,app.H*20/867,8,5};
+            std::string u = "File";
+            SDL_Rect file = {app.W * 15 / 1503, app.H * 19 / 867, 21, 20};
+            SDL_Rect flesh = {app.W * 72 / 1503, app.H * 25 / 867, 8, 5};
             SDL_RenderCopy(app.renderer, buttonTextures.file, nullptr, &file);
-            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr,&flesh);
-            text(app,app.W*50/1503,app.H*23/867,u,"Bold12",color.white);
+            SDL_RenderCopy(app.renderer, buttonTextures.flesh, nullptr, &flesh);
+            text(app, app.W * 50 / 1503, app.H * 28 / 867, u, "Bold12", color.white);
 
 
+        }
+        else if (it.ID == CODE_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 0, it.rect.y, it.rect.w, it.rect.y + 60, 10, 185, 193, 209, 255);
+            roundedBoxRGBA(app.renderer, 1, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10, 217, 227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10, 230, 240, 255, 255);
+
+            }
+            std::string u = "Code";
+            SDL_Rect code = {it.rect.w / 4 - 8, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            SDL_RenderCopy(app.renderer, buttonTextures.code, nullptr, &code);
+            text(app, code.x + 22, code.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
+
+
+        }
+        else if (it.ID == COSTUMES_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 95 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
+            }
+            std::string u = "Costumes";
+            SDL_Rect costom = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            SDL_RenderCopy(app.renderer, buttonTextures.custumes, nullptr, &costom);
+            text(app, costom.x + 22, costom.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
+
+
+        }
+        else if (it.ID == SOUNDS_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 205 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 205 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 205 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
+            }
+            std::string u = "Sound";
+            SDL_Rect sound = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
+            text(app, sound.x + 22, sound.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
+
+
+        } else if (it.ID == GO_BUTTON) {
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Go, nullptr,&u );
+        }
+        else if (it.ID == STOP_BUTTON){
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+3,it.rect.y+3,28,28};
+            SDL_RenderCopy(app.renderer, buttonTextures.Stop, nullptr,&u ); }
+        else if (it.ID == FULLSCREEN_BUTTON) {
+            roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 255, 255, 255, 255);
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3,185,193,206,255);
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
         }
 
 
@@ -1467,14 +1616,26 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 
 
 
-
-
-
-
-
-
+}
+void UpdateSprite (Sprite& s){
+    s.scratchX+= s.dx;
+    s.scratchY+= s. dy;
 
 }
+void RenderStage(AppState & app, Stage &stage,Sprite s ){
+    int X=-s.w/2+app.W*1223/1503+s.scratchX;
+    int Y=-s.h/2+app.H*228/609-s.scratchY;
+    SDL_Rect u={X,Y,int(s.w),int(s.h)};
+
+
+
+
+        SDL_RenderCopyEx(app.renderer,s.texture, nullptr,&u,s.angle, nullptr,SDL_FLIP_NONE);
+
+}
+
+
+
 
 
 
