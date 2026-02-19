@@ -36,20 +36,23 @@ constexpr int turnRDegrees=201;
 constexpr int turnLDegrees=202;
 constexpr int goToRandomPosition=203;
 constexpr int goToMousePointer=204;
-//constexpr int move=205;
-//constexpr int move=206;
-//constexpr int move=207;
-//constexpr int move=208;
-//constexpr int move=209;
-//constexpr int move=210;
-//constexpr int move=211;
-//constexpr int move=212;
-//constexpr int move=213;
-//constexpr int move=214;
-//constexpr int move=215;
+
+
+constexpr int moveTextInput=1000;
+constexpr int turnRDegreesTextInput=1001;
+constexpr int turnLDegreesTextInput=1002;
+
 
 // structs
 
+struct Parameter{
+    int move=10;
+    std::string moveText="10";
+    int turnRDegrees=15;
+    std::string turnRDegreesText="15";
+    int turnLDegrees=15;
+    std::string turnLDegreesText="15";
+};
 enum struct BlockType {Normal,Loop,Start};
 
 struct Block{
@@ -62,8 +65,9 @@ struct Block{
     int startloopindex;    // only for loops
     int endloopindex;
 
-    int parametr=0;
-    std::string text;
+    std::string p1="";
+    std::string p2="";
+
     std::string image;
 };
 struct AppState{
@@ -81,6 +85,17 @@ struct AppState{
 
     SDL_Texture* textureHelperText= nullptr;
     SDL_Texture* textureHelperImage= nullptr;
+
+    bool isTyping=false;
+    bool isOnTextInput=false;
+    bool isOnBlock=false;
+    int IDTextInput;
+
+    SDL_Cursor* cursorArrow= nullptr;
+    SDL_Cursor* cursorIBeam= nullptr;
+    SDL_Cursor* cursorHand= nullptr;
+
+
     // Code Tab
     // در صورت بروز مشکل برای عوض کردن تب ها این بخش چک بشه
     bool activeCodePage[9]= {};
@@ -93,6 +108,7 @@ struct AppState{
     SDL_Rect workSpace;
     int deltaXMouseBlock;
     int deltaYMouseBlock;
+    Parameter p;
 };
 
 struct MouseState{
@@ -113,8 +129,9 @@ struct MouseState{
 struct ButtonRect{
     int ID;
     const SDL_Rect rect;
-    SDL_Rect srcRect;
+    std::string text=""; //only for TextBox
 
+    SDL_Rect srcRect; // why ?
     bool onButton=false;
     bool rightClick=false;
     bool leftClick=false;
@@ -231,7 +248,12 @@ void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color
 void image(AppState &app,int x,int y,double scale,std::string I,bool xtMiddle=false,int readX=0,int readY=0,double readWScale=1,double readHScale=1);
 std::string BlockIDtoImageString(int id);
 bool blockDistanceTest(MouseState &mouse,const Block &c,const std::vector<Block> &a);
-
+void DrawBlock(AppState &app,const int &x,const int &y,const int &id,std::string I,bool getParam=false,const std::string &p1="",const std::string &p2="");
+void ConvertIDtoParam(AppState &app,int id,std::string &p1, std::string &p2);
+void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mouse);
+void SetCursor(AppState &app);
+void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,KeyboardButton &key);
+void updateBlockTextFromInput(AppState &app,std::vector<AllTabButtons> &tabs);
 //// Golab function
 void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGeneralTab &color,TabTexture& tabTexture,ButtonTextures &buttonTextures);
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file);
@@ -310,7 +332,10 @@ int main( int argc, char* argv[]) {
                                          {turnRDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*47*1/610,128,38}},
                                          {turnLDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*47*2/610,128,38}},
                                          {goToRandomPosition, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*47*3/610,146,38}},
-                                         {goToMousePointer, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*47*4/610,146,38}}
+                                         {goToMousePointer, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*47*4/610,146,38}},
+                                         {moveTextInput, SDL_Rect{app.W * 70 / 1365+37,app.H * 130 / 610+6,28,23},"10"},
+                                         {turnRDegreesTextInput, SDL_Rect{app.W * 70 / 1365+51,app.H * 130 / 610+app.H*47*1/610+6,28,23},"15"},
+                                         {turnLDegreesTextInput, SDL_Rect{app.W * 70 / 1365+51,app.H * 130 / 610+app.H*47*2/610+6,28,23},"15"}
             }
             }};
 
@@ -327,16 +352,22 @@ int main( int argc, char* argv[]) {
         return -1;
     }
     app.font["Roman11"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(11*scale));
+    app.font["Roman12"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(12*scale));
+    app.font["Roman13"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(13*scale));
     app.font["Roman14"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(14*scale));
     app.font["Bold12"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
     app.font["Bold13"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(13*scale));
     app.font["Bold14"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(14*scale));
     app.font["Bold19"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(19*scale));
+    app.font["Medium12"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(12*scale));
     app.font["Medium14"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(14*scale));
     app.font["Thin14"]=TTF_OpenFont("fonts/HelveticaNeue-Thin.otf",std::round(14*scale));
 
 
     //
+    app.cursorArrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    app.cursorIBeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    app.cursorHand  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 
     TabTexture texture;
     SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
@@ -378,12 +409,16 @@ int main( int argc, char* argv[]) {
         {
             updateKeyboardButtons(keyboardButton,e);
             updateButtonRectAndMouseState(mouse,tabButtons,e);
+            TextInput(app,tabButtons,e,keyboardButton);
         }
+        updateBlockTextFromInput(app,tabButtons);
+        CheckIsTyping(app,tabButtons,mouse);
         keyboardButtonActions(keyboardButton,app,tabButtons);
         RenderTextureGeneral(tabButtons[0].buttons,app,ColorGeneral,tabTexture,buttonTextures);
         SDL_RenderCopy(app.renderer,tabTexture.general, nullptr, nullptr);
         AllTabButtonActions(tabButtons,app,color,texture,mouse);
 
+        SetCursor(app);
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
     }
@@ -395,7 +430,9 @@ int main( int argc, char* argv[]) {
 
 
 
-
+    SDL_FreeCursor(app.cursorArrow);
+    SDL_FreeCursor(app.cursorIBeam);
+    SDL_FreeCursor(app.cursorHand);
 
     SDL_DestroyTexture(app.textureHelperImage);
     SDL_DestroyTexture(app.textureHelperText);
@@ -729,17 +766,23 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                     it2.active=true;
                 else if(200<=it2.ID && it2.ID<=300)
                     it2.active=false;
+                if(it.ID*20+1000<=it2.ID && it2.ID<=it.ID*20+1000+20)
+                    it2.active=true;
+                else if(1000<=it2.ID && it2.ID<=1500)
+                    it2.active=false;
             }
             RenderTextureCodeTab(buttons,app,color,texture);
             break;
         }
     }
+
     SDL_RenderCopy(app.renderer,texture.code,NULL,NULL);
+
     if(!app.allblock.empty())
     {
         for(auto &it:app.allblock)
         {
-            image(app,it.rect.x,it.rect.y,1,it.image);
+           DrawBlock(app,it.rect.x,it.rect.y,it.ID,it.image,true,it.p1,it.p2);
         }
     }
 
@@ -755,6 +798,14 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
         }
     }
 
+    for(auto &it:buttons)
+    {
+        if(1000 <= it.ID && it.ID <= 1500 && it.active)
+        {
+            text(app,it.rect.x+13,it.rect.y+12,it.text,"Roman13",SDL_Color{87, 94, 117,255});
+        }
+    }
+    app.isOnBlock=false;
     for(auto &it:buttons)
     {
         if(it.ID<=MyBlocks && Motion<=it.ID)
@@ -823,22 +874,26 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                     text(app,it.rect.w/2,it.rect.y+app.H*35/609,"My Blocks","Roman10.4",color.leftPanelText);
             }
         }
-        if(200 <= it.ID && it.ID <= 210 && it.active)
+
+        if(200 <= it.ID && it.ID <= 250 && it.active)
         {
-            if(it.leftPressed)
+            if(it.onButton)
+            {
+                app.isOnBlock=true;
+            }
+            if(it.leftPressed && !app.isOnTextInput)
             {
                 app.pressedBlock=true;
                 app.blockHelper.ID=it.ID;
-              //  std::cout<<it.ID<<std::endl;
                 app.blockHelper.index=app.block.size()-1;
                 app.blockHelper.image= BlockIDtoImageString(it.ID);
                 app.blockHelper.rect.w=it.rect.w;
                 app.blockHelper.rect.h=it.rect.h;
-                image(app,mouse.x-(mouse.xLeftDown-it.rect.x),mouse.y-(mouse.yLeftDown-it.rect.y),1,  app.blockHelper.image);
+                DrawBlock(app,mouse.x-(mouse.xLeftDown-it.rect.x),mouse.y-(mouse.yLeftDown-it.rect.y),it.ID,app.blockHelper.image);
                 app.deltaXMouseBlock = mouse.xLeftDown - it.rect.x;
                 app.deltaYMouseBlock = mouse.yLeftDown - it.rect.y;
+                ConvertIDtoParam(app,it.ID,app.blockHelper.p1,app.blockHelper.p2);
             }
-         //   std::cout<<!it.leftPressed<<app.pressedBlock<<mouse.leftUp<<(it.ID==app.blockHelper.ID)<<std::endl;
             if( app.pressedBlock && mouse.leftUp)
             {
 
@@ -869,6 +924,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
         }
 
     }
+
 
 
 
@@ -964,6 +1020,9 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
         {
             if(it.active)
                 image(app,it.rect.x,it.rect.y,1,BlockIDtoImageString(it.ID));
+               // DrawBlock(app,it.rect.x,it.rect.y,it.ID,BlockIDtoImageString(it.ID));
+
+
         }
     }
 
@@ -981,31 +1040,35 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
 }
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color,bool xyNotMiddle)
 {
-    TTF_Font* Font=app.font[F];
-    SDL_Surface* surface= TTF_RenderUTF8_Blended(Font,T.c_str(),color);
-    if(!surface){
-        std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n";
-        app.endProgram=true;
-        return;
-    }
-    app.textureHelperText= SDL_CreateTextureFromSurface(app.renderer, surface);
-    if(!app.textureHelperText){
-        std::cout << "SDL_CreateTextureFromSurface failed: " << SDL_GetError() << "\n";
-        app.endProgram=true;
+    if(!T.empty())
+    {
+        TTF_Font* Font=app.font[F];
+        SDL_Surface* surface= TTF_RenderUTF8_Blended(Font,T.c_str(),color);
+        if(!surface){
+            std::cout << "TTF_RenderUTF8_Blended failed: " << TTF_GetError() << "\n";
+            app.endProgram=true;
+            return;
+        }
+        app.textureHelperText= SDL_CreateTextureFromSurface(app.renderer, surface);
+        if(!app.textureHelperText){
+            std::cout << "SDL_CreateTextureFromSurface failed: " << SDL_GetError() << "\n";
+            app.endProgram=true;
+            SDL_FreeSurface(surface);
+            return;
+        }
         SDL_FreeSurface(surface);
-        return;
+        int w,h;
+        SDL_QueryTexture(app.textureHelperText, NULL, NULL, &w, &h);
+        SDL_Rect rr;
+        if(xyNotMiddle)
+            rr={x,y,w,h};
+        else
+            rr={x-w/2,y-h/2,w,h};
+        SDL_RenderCopy(app.renderer, app.textureHelperText, NULL, &rr);
+        SDL_DestroyTexture(app.textureHelperText);
+        app.textureHelperText = nullptr;
     }
-    SDL_FreeSurface(surface);
-    int w,h;
-    SDL_QueryTexture(app.textureHelperText, NULL, NULL, &w, &h);
-    SDL_Rect rr;
-    if(xyNotMiddle)
-         rr={x,y,w,h};
-    else
-         rr={x-w/2,y-h/2,w,h};
-    SDL_RenderCopy(app.renderer, app.textureHelperText, NULL, &rr);
-    SDL_DestroyTexture(app.textureHelperText);
-    app.textureHelperText = nullptr;
+
 }
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac)
 {
@@ -1067,6 +1130,124 @@ void image(AppState &app,int x,int y,double scale,std::string I,bool xyMiddle,in
     SDL_DestroyTexture(app.textureHelperImage);
     app.textureHelperImage = nullptr;
 }
+bool blockDistanceTest(MouseState &mouse,const Block &c,const std::vector<Block> &a)
+{
+    if(a.size()!=0)
+    {
+        SDL_Rect b={mouse.x-(mouse.xLeftDown-c.rect.x),mouse.y-(mouse.yLeftDown-c.rect.y),c.rect.w,c.rect.h};
+        SDL_Rect ar=a[a.size()-1].rect;
+        bool a1=mouse.y-ar.y>=0 && 100>=mouse.y-ar.y;
+        bool a2=mouse.x-ar.x>=0 && mouse.x-ar.x-ar.w<=0;
+        return a1 && a2;
+    }
+    return false;
+}
+void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mouse)
+{
+    app.isOnTextInput=false;
+    for(auto it1:tab)
+        if(it1.active)
+            for(auto it2:it1.buttons)
+            {
+                if(1000<=it2.ID && it2.ID<=1500 && it2.active)
+                {
+                    if(it2.onButton)
+                    {
+                        app.isOnTextInput=true;
+                        if(it2.active && it2.leftClick)
+                        {
+                            app.IDTextInput=it2.ID;
+                            SDL_StartTextInput();
+                            it2.text="";
+                            app.isTyping=true;
+                        }
+                    }
+                }
+            }
+
+    if(app.isTyping)
+    {
+        if(mouse.leftDown && !app.isOnTextInput)
+        {
+            SDL_StopTextInput();
+            app.isTyping=false;
+        }
+    }
+}
+void SetCursor(AppState &app)
+{
+    if(app.isOnTextInput)
+    {
+        SDL_SetCursor(app.cursorIBeam);
+    }
+    else if(app.isOnBlock && !app.isOnTextInput)
+    {
+        SDL_SetCursor(app.cursorHand);
+    }
+    else
+    {
+        SDL_SetCursor(app.cursorArrow);
+    }
+
+}
+void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,KeyboardButton &key)
+{
+    if(!app.isTyping)
+        return;
+    ButtonRect* activeBtn = nullptr;
+    for (auto &tab : tabs) {
+        if (!tab.active) continue;
+        for (auto &btn : tab.buttons) {
+            if (btn.ID == app.IDTextInput) {
+                activeBtn = &btn;
+                break;
+            }
+        }
+    }
+    if (!activeBtn)
+        return;
+    if (e.type == SDL_TEXTINPUT) {
+        if (isdigit(e.text.text[0]) || e.text.text[0] == '-') {
+            activeBtn->text += e.text.text;
+        }
+    }
+    if(key.keyDown[SDL_SCANCODE_BACKSPACE])
+        if (!activeBtn->text.empty()) {
+            activeBtn->text.pop_back();
+        }
+
+    if (key.keyDown[SDL_SCANCODE_RETURN]) {
+        app.isTyping = false;
+        app.IDTextInput = -1;
+        SDL_StopTextInput();
+    }
+}
+
+void updateBlockTextFromInput(AppState &app,std::vector<AllTabButtons> &tabs)
+{
+    if(!app.isTyping)
+        return;
+    for(auto it1:tabs)
+        if(it1.active)
+            for(auto it2:it1.buttons)
+            {
+                if(it2.ID==app.IDTextInput && it2.active)
+                {
+                    if(app.IDTextInput==moveTextInput)
+                    {
+                       app.p.moveText=it2.text;
+                    }
+                    if(app.IDTextInput==turnRDegreesTextInput)
+                    {
+                        app.p.turnRDegreesText=it2.text;
+                    }
+                    if(app.IDTextInput==turnLDegreesTextInput)
+                    {
+                        app.p.turnLDegreesText=it2.text;
+                    }
+                }
+            }
+}
 std::string BlockIDtoImageString(int id)
 {
     if(id == move)
@@ -1081,19 +1262,46 @@ std::string BlockIDtoImageString(int id)
         return "blocks/goToMousePointer.png";
 
 }
-bool blockDistanceTest(MouseState &mouse,const Block &c,const std::vector<Block> &a)
+void ConvertIDtoParam(AppState &app,int id,std::string &p1, std::string &p2)
 {
-    if(a.size()!=0)
+    if(id==move)
     {
-        SDL_Rect b={mouse.x-(mouse.xLeftDown-c.rect.x),mouse.y-(mouse.yLeftDown-c.rect.y),c.rect.w,c.rect.h};
-        SDL_Rect ar=a[a.size()-1].rect;
-        bool a1=mouse.y-ar.y>=0 && 100>=mouse.y-ar.y;
-        bool a2=mouse.x-ar.x>=0 && mouse.x-ar.x-ar.w<=0;
-        return a1 && a2;
+        p1=app.p.moveText;
     }
-    return false;
+    else if(id==turnLDegrees)
+    {
+        p1=app.p.turnLDegreesText;
+    }
+    else if(id==turnRDegrees)
+    {
+        p1=app.p.turnRDegreesText;
+    }
 }
-
+void DrawBlock(AppState &app,const int &x,const int &y,const int &id,std::string I,bool getParam,const std::string &p1,const std::string &p2)
+{
+    image(app,x,y,1,I);
+    if(id==move)
+    {
+        if(!getParam)
+            text(app,x+50,y+18,app.p.moveText,"Roman13",SDL_Color{87, 94, 117,255});
+        else
+            text(app,x+50,y+18,p1,"Roman13",SDL_Color{87, 94, 117,255});
+    }
+    if(id==turnRDegrees)
+    {
+        if(!getParam)
+            text(app,x+64,y+18,app.p.turnRDegreesText,"Roman13",SDL_Color{87, 94, 117,255});
+        else
+            text(app,x+64,y+18,p1,"Roman13",SDL_Color{87, 94, 117,255});
+    }
+    if(id==turnLDegrees)
+    {
+        if(!getParam)
+            text(app,x+64,y+18,app.p.turnLDegreesText,"Roman13",SDL_Color{87, 94, 117,255} );
+        else
+            text(app,x+64,y+18,p1,"Roman13",SDL_Color{87, 94, 117,255});
+    }
+}
 //// Golab function
 
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file){
