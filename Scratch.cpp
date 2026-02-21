@@ -115,6 +115,41 @@ constexpr int  waitSecondesTextInput=1120;
 constexpr int repeatTextInput=1122;
 
 
+constexpr int nameCostume=3000;
+constexpr int uploadImage=3001;
+constexpr int xImage=3002;
+constexpr int yImage=3003;
+constexpr int sizeImage=3004;
+
+constexpr int nameCostumeTextInput=3500;
+constexpr int uploadImageTextInput=3501;
+constexpr int xImageTextInput=3502;
+constexpr int yImageTextInput=3503;
+constexpr int sizeImageTextInput=3504;
+
+constexpr int flipHorizontal=3010;
+constexpr int flipVertic=3011;
+constexpr int deleteButton=3012;
+
+constexpr int mouseButton=3013;
+constexpr int eraser=3014;
+constexpr int brush=3015;
+constexpr int textOut=3016;
+constexpr int lineS=3017;
+constexpr int circle=3018;
+constexpr int rectangle=3019;
+constexpr int fill=3020;
+
+constexpr int showSpace=3021;
+
+constexpr int mouseButtonWhite=4013;
+constexpr int eraserWhite=4014;
+constexpr int brushWhite=4015;
+constexpr int textOutWhite=4016;
+constexpr int lineSWhite=4017;
+constexpr int circleWhite=4018;
+constexpr int rectangleWhite=4019;
+constexpr int fillWhite=4020;
 // structs
 //// Mamad function
 
@@ -187,6 +222,7 @@ struct AppState{
     // در صورت بروز مشکل برای عوض کردن تب ها این بخش چک بشه
     bool activeCodePage[9]= {};
     std::map<std::string,TTF_Font*> font;
+    std::map<int,bool> paint;
     std::vector<Block> block;
     std::vector<Block> allblock;
     bool pressedBlock=false;
@@ -398,7 +434,8 @@ void DestroyButtonTexture(ButtonTextures &textures);
 void UpdateSprite (Sprite& s);
 void RenderStage(AppState & app, Box &box);
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key);
-void LoadBlockTexture(AppState &app);
+void LoadMyTexture(AppState &app);
+void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse);
 
 int main( int argc, char* argv[]) {
     AppState app;
@@ -446,7 +483,7 @@ int main( int argc, char* argv[]) {
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
-    LoadBlockTexture(app);
+    LoadMyTexture(app);
 
 
 
@@ -460,15 +497,15 @@ int main( int argc, char* argv[]) {
                                          {FILE_BUTTON, SDL_Rect{0,0,app.W*91/1503,app.H*56/867}},
                                          {EDIT_BUTTON, SDL_Rect{app.W*91/1503,0,app.W*105/1503,app.H*56/867}},
                                          {SETTING_BUTTON, SDL_Rect{app.W*196/1503,0,app.W*120/1503,app.H*56/867}},
-                                         {CODE_BUTTON, SDL_Rect{0,app.H*67/609,app.W*95/1503,app.H*25/609}},
-                                         {COSTUMES_BUTTON, SDL_Rect{app.W*95/1503,app.H*67/609,app.W*110/1503,app.H*25/609}},
-                                         {SOUNDS_BUTTON, SDL_Rect{app.W*205/1503,app.H*67/609,app.W*85/1503,app.H*25/609}},
+                                         {CODE_BUTTON, SDL_Rect{0,app.H*54/609,app.W*95/1365,app.H*40/609}},
+                                         {COSTUMES_BUTTON, SDL_Rect{app.W*95/1365,app.H*54/609,app.W*95/1365,app.H*40/609}},
+                                         {SOUNDS_BUTTON, SDL_Rect{app.W*95*2/1365,app.H*54/609,app.W*95/1365,app.H*40/609}},
                                          {GO_BUTTON, SDL_Rect{app.W*950/1503,app.H*61/609,25,25}},
                                          {STOP_BUTTON, SDL_Rect{app.W*983/1503,app.H*61/609,25,25}},
                                          {FULLSCREEN_BUTTON, SDL_Rect{app.W*1462/1503,app.H*61/609,app.W*33/1503,app.H*31/867}}}
 
             },
-            {TAB_CODE,    true, {{Motion,       SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
+            {TAB_CODE,    true, {{Motion,   SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Looks,         SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 1 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Sound,            SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 2 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Events, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 3 / 609, app.W * 60 / 1365,app.H * 45 / 609}},
@@ -521,7 +558,42 @@ int main( int argc, char* argv[]) {
                                          {waitSecondesTextInput, SDL_Rect{app.W * 70 / 1365+31, app.H * 130 / 610+6, 28, 23},"1",false},
                                          {repeatTextInput, SDL_Rect{app.W*70/1365+42,app.H*130/610+app.H*dis*1/610+7,28,23},"10",false}
             }
-            }};
+            },
+            {TAB_COSTUMES,false ,  {{Motion,SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {nameCostume,SDL_Rect{app.W * 216 / 1365, app.H * 113 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {uploadImage,SDL_Rect{app.W * 70 / 1365, app.H * 163 / 609, app.W * 60 / 1365, app.H * 32 / 609}},
+                                         {xImage,SDL_Rect{app.W * 295 / 1365, app.H * 163 / 609, app.W * 48 / 1365, app.H * 32 / 609}},
+                                         {yImage,SDL_Rect{app.W * 380 / 1365, app.H * 163 / 609, app.W * 48 / 1365, app.H * 34 / 609}},
+                                         {sizeImage,SDL_Rect{app.W * 475 / 1365, app.H * 163 / 609, app.W * 64 / 1365, app.H * 34 / 609}},
+                                         {nameCostumeTextInput,SDL_Rect{app.W * 216 / 1365, app.H * 113 / 609, app.W * 60 / 1365, app.H * 45 / 609},"costume1", true, true},
+                                         {xImageTextInput,SDL_Rect{app.W * 295 / 1365, app.H * 163 / 609, app.W * 48 / 1365, app.H * 32 / 609},"0"},
+                                         {yImageTextInput,SDL_Rect{app.W * 380 / 1365, app.H * 163 / 609, app.W * 48 / 1365, app.H * 34 / 609},"0"},
+                                         {sizeImageTextInput,SDL_Rect{app.W * 475 / 1365, app.H * 163 / 609, app.W * 64 / 1365, app.H * 34 / 609},"100"},
+                                         {mouseButton,SDL_Rect{app.W * 170 / 1365, app.H * 240 / 609, 43, 43}},
+                                         {eraser,SDL_Rect{app.W * 240 / 1365, app.H * 240 / 609, 43, 43}},
+                                         {brush,SDL_Rect{app.W * 170 / 1365, app.H * 290 / 609, 43, 43}},
+                                         {textOut,SDL_Rect{app.W * 240 / 1365, app.H * 290 / 609, 43, 43}},
+                                         {rectangle,SDL_Rect{app.W * 170 / 1365, app.H * 340 / 609, 43, 43}},
+                                         {circle,SDL_Rect{app.W * 240 / 1365, app.H * 340 / 609, 43, 43}},
+                                         {lineS,SDL_Rect{app.W * 170 / 1365, app.H * 390 / 609, 43, 43}},
+                                         {fill,SDL_Rect{app.W * 240 / 1365, app.H * 390 / 609, 43, 43}},
+                                         {showSpace,SDL_Rect{app.W * 297 / 1365, app.H * 240 / 609, app.W * 538 / 1365, app.H * 350 / 610}},
+                                         {flipHorizontal,SDL_Rect{app.W * 170 / 1365, app.H * 360 / 609, app.W * 42 / 1365, app.H *41 / 610}},
+                                         {flipVertic,SDL_Rect{app.W * 170 / 1365, app.H * 360 / 609, app.W * 42 / 1365, app.H *41 / 610}},
+                                         {deleteButton,SDL_Rect{app.W * 170 / 1365, app.H * 360 / 609, app.W * 42 / 1365, app.H * 41}}
+            }
+            }
+            };
+
+
+    app.paint[mouseButton]=true;
+    app.paint[eraser]=false;
+    app.paint[brush]=false;
+    app.paint[textOut]=false;
+    app.paint[rectangle]=false;
+    app.paint[circle]=false;
+    app.paint[lineS]=false;
+    app.paint[fill]=false;
 
     Stage stage;
     Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),0,0,0};
@@ -784,7 +856,7 @@ void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTa
 {
     if((key.pressed[SDL_SCANCODE_LALT] || key.pressed[SDL_SCANCODE_RALT]) && key.pressed[SDL_SCANCODE_F4])
     {
-        app.endProgram=true;
+       app.endProgram=true;
     }
 }
 void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &color,TabTexture &texture,MouseState &mouse)
@@ -798,7 +870,9 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
                 case TAB_CODE:
                     RenderCodeTap(it.buttons,app,color.code,texture,mouse);
                     break;
-
+            case TAB_COSTUMES:
+                    RenderCostumesTap(it.buttons,app,color.code,texture,mouse);
+                    break;
             }
 }
 void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse)
@@ -1132,7 +1206,7 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
 
     roundedBoxRGBA(app.renderer,0,y,app.W*853/1365,app.H,15*app.W/1365,color.CodeBackground.r,color.CodeBackground.g,color.CodeBackground.b,color.CodeBackground.a);
 
-    SDL_Rect leftPanel={0,y,w,app.H-w};
+    SDL_Rect leftPanel={0,y,w,app.H-y};
     SDL_SetRenderDrawColor(app.renderer,color.leftPaned.r,color.leftPaned.g,color.leftPaned.b,color.leftPaned.a);
     SDL_RenderFillRect(app.renderer,&leftPanel);
 
@@ -1443,7 +1517,7 @@ void DrawBlock(AppState &app,Block &block)
     if(block.rectText2.w != 0)
         text(app,block.rectText2.x+block.rectText2.w/2,block.rectText2.y+block.rectText2.h/2,block.p2,"Roman13",SDL_Color{87, 94, 117,255});
 }
-void LoadBlockTexture(AppState &app)
+void LoadMyTexture(AppState &app)
 {
     app.texture[move]=LoadTexture(app.renderer,"blocks/move.png");
     app.texture[turnRDegrees]=LoadTexture(app.renderer,"blocks/turnRDegrees.png");
@@ -1467,8 +1541,83 @@ void LoadBlockTexture(AppState &app)
     app.texture[waitSecondes]=LoadTexture(app.renderer,"blocks/waitSecondes.png");
     app.texture[repeat]=LoadTexture(app.renderer,"blocks/repeat.png");
     app.texture[repeatHelper]=LoadTexture(app.renderer,"blocks/repeatHelper.png");
+    app.texture[mouseButton]=LoadTexture(app.renderer,"icons/mouse.png");
+    app.texture[eraser]=LoadTexture(app.renderer,"icons/eraser.png");
+    app.texture[brush]=LoadTexture(app.renderer,"icons/brushButton.png");
+    app.texture[lineS]=LoadTexture(app.renderer,"icons/lineS.png");
+    app.texture[rectangle]=LoadTexture(app.renderer,"icons/rectangle.png");
+    app.texture[textOut]=LoadTexture(app.renderer,"icons/textOut.png");
+    app.texture[circle]=LoadTexture(app.renderer,"icons/circle.png");
+    app.texture[fill]=LoadTexture(app.renderer,"icons/fill.png");
+    app.texture[mouseButtonWhite]=LoadTexture(app.renderer,"icons/mouseWhite.png");
+    app.texture[eraserWhite]=LoadTexture(app.renderer,"icons/eraserWhite.png");
+    app.texture[brushWhite]=LoadTexture(app.renderer,"icons/brushButtonWhite.png");
+    app.texture[lineSWhite]=LoadTexture(app.renderer,"icons/lineSWhite.png");
+    app.texture[rectangleWhite]=LoadTexture(app.renderer,"icons/rectangleWhite.png");
+    app.texture[textOutWhite]=LoadTexture(app.renderer,"icons/textOutWhite.png");
+    app.texture[circleWhite]=LoadTexture(app.renderer,"icons/circleWhite.png");
+    app.texture[fillWhite]=LoadTexture(app.renderer,"icons/fillWhite.png");
+}
+void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse)
+{
+    int y=app.H * 90 / 609;
+    int w=app.W * 137/1365;
+    roundedBoxRGBA(app.renderer,0,y,app.W*853/1365,app.H,15*app.W/1365,255,255,255,255);
+
+    SDL_Rect leftPanel={0,y,w,app.H-y};
+    SDL_SetRenderDrawColor(app.renderer,217,227,242,255);
+    SDL_RenderFillRect(app.renderer,&leftPanel);
+
+    roundedRectangleRGBA(app.renderer,-20,y,app.W*853/1365,app.H,15,color.line.r,color.line.g,color.line.b,color.line.a);
+    aalineRGBA(app.renderer,w,y,w,app.H,color.line.r,color.line.g,color.line.b,color.line.a);
+
+    for(auto &it:buttons)
+    {
+        if(3013<=it.ID && it.ID<=3020)
+        {
+            if(it.leftClick)
+            {
+                for(auto &it2:app.paint)
+                    it2.second=false;
+                app.paint[it.ID]=true;
+            }
+            if(app.paint[it.ID])
+            {
+                roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID+1000,true);
+            }
+            else
+            image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID,true);
+        }
+        if(it.ID==showSpace)
+        {
+            int size=11;
+            for(int i=0;i<(it.rect.w+size)/size;i++)
+                for(int j=0;j<(it.rect.h+size)/size;j++)
+                {
+                    SDL_Rect moraba={it.rect.x+i*size,it.rect.y+j*size,size,size};
+                    if(i*size+size>it.rect.w)
+                        moraba.w=it.rect.w-i*size;
+                    if(j*size+size>it.rect.h)
+                        moraba.h=it.rect.h-j*size;
+
+                    if((i+j)%2==1)
+                    {
+                        SDL_SetRenderDrawColor(app.renderer,234,240,248,255);
+                        SDL_RenderFillRect(app.renderer,&moraba);
+                    }
+
+                }
+            SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
+            SDL_RenderDrawRect(app.renderer,&it.rect);
+            roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,2,232,237,241,255);
+        }
+    }
+
 
 }
+
 //// Golab function
 
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color)
@@ -1754,47 +1903,88 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
         }
         else if (it.ID == CODE_BUTTON) {
             roundedRectangleRGBA(app.renderer, 0, it.rect.y, it.rect.w, it.rect.y + 60, 10, 185, 193, 209, 255);
-            roundedBoxRGBA(app.renderer, 1, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10, 217, 227, 242, 255);
+            roundedBoxRGBA(app.renderer, 1, it.rect.y + 1, it.rect.w -1, it.rect.y + 60, 10, 217, 227, 242, 255);
             if (it.onButton) {
                 roundedBoxRGBA(app.renderer, 1, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10, 230, 240, 255, 255);
 
             }
             std::string u = "Code";
-            SDL_Rect code = {it.rect.w / 4 - 8, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            SDL_Rect code = {it.rect.w / 4 - 8, it.rect.y + it.rect.h / 2 - it.rect.h / 5 * (1), 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.code, nullptr, &code);
-            text(app, code.x + 22, code.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
-
+            text(app, code.x + 22, code.y + 10, u, "Medium12", {123, 131, 152, 255}, true);
+         if(it.leftClick)
+         {
+             for(auto &it:tabs)
+             {
+                 if(it.ID==TAB_CODE)
+                 {
+                     it.active=true;
+                 }
+                 else if(it.ID!=TAB_GENERAL)
+                 {
+                     it.active=false;
+                 }
+             }
+         }
 
         }
         else if (it.ID == COSTUMES_BUTTON) {
-            roundedRectangleRGBA(app.renderer, 95 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
                                  209, 255);
-            roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+            roundedBoxRGBA(app.renderer, it.rect.x+1, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
                            227, 242, 255);
             if (it.onButton) {
-                roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
+                roundedBoxRGBA(app.renderer,  + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
                                230, 240, 255, 255);
 
             }
             std::string u = "Costumes";
-            SDL_Rect costom = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            SDL_Rect costom = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 5 * (1), 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.custumes, nullptr, &costom);
-            text(app, costom.x + 22, costom.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
+            text(app, costom.x + 22, costom.y + 10, u, "Medium12", {123, 131, 152, 255}, true);
 
+            if(it.leftClick)
+            {
+                for(auto &it:tabs)
+                {
+                    if(it.ID==TAB_COSTUMES)
+                    {
+                        it.active=true;
+                    }
+                    else if(it.ID!=TAB_GENERAL)
+                    {
+                        it.active=false;
+                    }
+                }
+            }
 
-       }
+        }
         else if (it.ID == SOUNDS_BUTTON) {
-            roundedRectangleRGBA(app.renderer, 205 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,209, 255);
-            roundedBoxRGBA(app.renderer, 1 + 205 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,227, 242, 255);
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,209, 255);
+            roundedBoxRGBA(app.renderer, 1 + it.rect.x , it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,227, 242, 255);
             if (it.onButton) {
-                roundedBoxRGBA(app.renderer, 1 + 205 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,230, 240, 255, 255);
+                roundedBoxRGBA(app.renderer, 1 + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,230, 240, 255, 255);
 
-           }
-           std::string u = "Sound";
-           SDL_Rect sound = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 4 * (1), 22, 22};
+            }
+            std::string u = "Sound";
+            SDL_Rect sound = {it.rect.x + it.rect.w / 15, it.rect.y + it.rect.h / 2 - it.rect.h / 5 * (1), 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
-            text(app, sound.x + 22, sound.y + 5, u, "Medium12", {123, 131, 152, 255}, true);
+            text(app, sound.x + 22, sound.y + 10, u, "Medium12", {123, 131, 152, 255}, true);
 
+            if(it.leftClick)
+            {
+                for(auto &it:tabs)
+                {
+                    if(it.ID==TAB_SOUNDS)
+                    {
+                        it.active=true;
+                    }
+                    else if(it.ID!=TAB_GENERAL)
+                    {
+                        it.active=false;
+                    }
+                }
+            }
 
         }
         else if (it.ID == GO_BUTTON) {
