@@ -46,7 +46,7 @@ constexpr int WorkSpace=17;
 //------------------ sprite names
 constexpr int gorbaFront=100;
 constexpr int gorbaBack=101;
-
+constexpr int gorbaStandard=102;
 
 constexpr int normal=2000;
 constexpr int loop=2001;
@@ -422,7 +422,9 @@ void DrawBlock(AppState &app,Block &block);
 void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mouse);
 void SetCursor(AppState &app);
 void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,KeyboardButton &key);
-
+void LoadMyTexture(AppState &app);
+void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tabs);
+void textureRenderer(AppState &app,std::vector<AllTabButtons> &tabs,float x,float y,float scale);
 
 //// Golab function
 
@@ -434,8 +436,7 @@ void DestroyButtonTexture(ButtonTextures &textures);
 void UpdateSprite (Sprite& s);
 void RenderStage(AppState & app, Box &box);
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key);
-void LoadMyTexture(AppState &app);
-void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse);
+
 
 int main( int argc, char* argv[]) {
     AppState app;
@@ -477,9 +478,9 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+   // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+      renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
@@ -599,7 +600,33 @@ int main( int argc, char* argv[]) {
     Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),0,0,0};
 
 
-    app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
+    for(auto &it1:tabButtons)
+    {
+        if(it1.ID==TAB_COSTUMES)
+        {
+            for(auto &it2:it1.buttons)
+            if(it2.ID==showSpace)
+            {
+
+                app.box.t=SDL_CreateTexture(
+                        app.renderer,
+                        SDL_PIXELFORMAT_RGBA8888,
+                        SDL_TEXTUREACCESS_TARGET,
+                        it2.rect.w,
+                        it2.rect.h
+                );
+                SDL_SetTextureBlendMode(app.box.t, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderTarget(app.renderer,app.box.t);
+                SDL_SetRenderDrawColor(app.renderer,0,0,0,0);
+                SDL_RenderClear(app.renderer);
+                image(app,it2.rect.w/2,it2.rect.h/2, 1, gorbaStandard, true);
+                SDL_SetRenderTarget(app.renderer,NULL);
+                break;
+            }
+        }
+    }
+
+
 
 
     Theme light, color;
@@ -871,7 +898,7 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
                     RenderCodeTap(it.buttons,app,color.code,texture,mouse);
                     break;
             case TAB_COSTUMES:
-                    RenderCostumesTap(it.buttons,app,color.code,texture,mouse);
+                    RenderCostumesTap(it.buttons,app,color.code,texture,mouse,tab);
                     break;
             }
 }
@@ -1557,8 +1584,10 @@ void LoadMyTexture(AppState &app)
     app.texture[textOutWhite]=LoadTexture(app.renderer,"icons/textOutWhite.png");
     app.texture[circleWhite]=LoadTexture(app.renderer,"icons/circleWhite.png");
     app.texture[fillWhite]=LoadTexture(app.renderer,"icons/fillWhite.png");
+    app.texture[gorbaStandard]=LoadTexture(app.renderer, "icons/gorbaStandard.png");
+
 }
-void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse)
+void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tabs)
 {
     int y=app.H * 90 / 609;
     int w=app.W * 137/1365;
@@ -1571,6 +1600,14 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
     roundedRectangleRGBA(app.renderer,-20,y,app.W*853/1365,app.H,15,color.line.r,color.line.g,color.line.b,color.line.a);
     aalineRGBA(app.renderer,w,y,w,app.H,color.line.r,color.line.g,color.line.b,color.line.a);
 
+    SDL_SetRenderDrawColor(app.renderer, 217, 217, 217, 255);
+    for (int x =app.W*160/1365 ; x <app.W*840/1365; x += 5)
+    {
+        int endX =x+2;
+        if (endX > app.W*842/1365)
+            endX = app.W*842/1365;
+        SDL_RenderDrawLine(app.renderer, x, app.H*215/609, endX,  app.H*215/609);
+    }
     for(auto &it:buttons)
     {
         if(3013<=it.ID && it.ID<=3020)
@@ -1609,15 +1646,45 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                     }
 
                 }
+            textureRenderer(app,tabs,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1);
             SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
             SDL_RenderDrawRect(app.renderer,&it.rect);
             roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,2,232,237,241,255);
+
         }
     }
 
 
-}
 
+
+}
+void textureRenderer(AppState &app,std::vector<AllTabButtons> &tabs,float x,float y,float scale)
+{
+    for(auto &it1:tabs)
+    {
+        if(it1.ID==TAB_COSTUMES)
+            for(auto &it2:it1.buttons)
+            {
+                if(it2.ID==showSpace)
+                {
+                    int imageW,imageH;
+                    SDL_Rect rect;
+                    SDL_Rect scr;
+                    scr.x=0;
+                    scr.y=0;
+                    scr.w=imageW=it2.rect.w;
+                    scr.h=imageH=it2.rect.h;
+                    rect.x=x-(double)imageW/scale/2.0;
+                    rect.y=y-(double)imageH/scale/2.0;
+                    rect.w=(double)scr.w/scale;
+                    rect.h=(double)scr.h/scale;
+
+                    SDL_RenderCopy(app.renderer,app.box.t,&scr,&rect);
+                    break;
+                }
+            }
+    }
+}
 //// Golab function
 
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color)
@@ -2035,39 +2102,39 @@ void RenderStage(AppState & app, Box &box)
 }
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key)
 {
-    std::cout<<"run";
-    SDL_Event e;
-    SDL_PollEvent(&e);
-    for(auto &it:app.block)
-    {
-           SDL_PollEvent(&e);
-
-           if(it.ID==move)
-           {
-               app.box.x+=std::stoi(it.p1)*cos(app.box.angle*M_PI/180.0);
-               app.box.y+=std::stoi(it.p1)*sin(app.box.angle*M_PI/180.0);
-           }
-           else if(it.ID==turnRDegrees)
-           {
-               app.box.angle-=std::stoi(it.p1);
-           }
-           else if(it.ID==turnRDegrees)
-           {
-               app.box.angle+=std::stoi(it.p1);
-           }
-
-
-      //  RenderStage(app,app.box);
-        SDL_RenderPresent(app.renderer);
-            resetKeyboardButtons(key);
-            resetButtonRect(tabs);
-            resetMouseState(mouse);
-            while(SDL_PollEvent(&e))
-            {
-                updateKeyboardButtons(key,e);
-                updateButtonRectAndMouseState(mouse,tabs,e);
-            }
-    }
+//    std::cout<<"run";
+//    SDL_Event e;
+//    SDL_PollEvent(&e);
+//    for(auto &it:app.block)
+//    {
+//           SDL_PollEvent(&e);
+//
+//           if(it.ID==move)
+//           {
+//               app.box.x+=std::stoi(it.p1)*cos(app.box.angle*M_PI/180.0);
+//               app.box.y+=std::stoi(it.p1)*sin(app.box.angle*M_PI/180.0);
+//           }
+//           else if(it.ID==turnRDegrees)
+//           {
+//               app.box.angle-=std::stoi(it.p1);
+//           }
+//           else if(it.ID==turnRDegrees)
+//           {
+//               app.box.angle+=std::stoi(it.p1);
+//           }
+//
+//
+//      //  RenderStage(app,app.box);
+//        SDL_RenderPresent(app.renderer);
+//            resetKeyboardButtons(key);
+//            resetButtonRect(tabs);
+//            resetMouseState(mouse);
+//            while(SDL_PollEvent(&e))
+//            {
+//                updateKeyboardButtons(key,e);
+//                updateButtonRectAndMouseState(mouse,tabs,e);
+//            }
+//    }
 }
 
 
