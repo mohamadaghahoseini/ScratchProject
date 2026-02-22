@@ -563,9 +563,9 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-   // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-      renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
@@ -3213,6 +3213,16 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
                 roundedBoxRGBA(app.renderer,  + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
                                230, 240, 255, 255);
 
+        }
+        else if (it.ID == COSTUMES_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 95 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
             }
             std::string u = "Costumes";
             SDL_Rect costom = {it.rect.x+it.rect.w*2/10-15, it.rect.y+it.rect.h/2-11, 22, 22};
@@ -3242,12 +3252,41 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             if (it.onButton) {
                 roundedBoxRGBA(app.renderer, 1 + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,230, 240, 255, 255);
 
+        }
+        else if (it.ID == SOUNDS_BUTTON) {
+            roundedRectangleRGBA(app.renderer, 215 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
+                                 209, 255);
+            roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
+                           227, 242, 255);
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10,
+                               230, 240, 255, 255);
+
             }
             std::string u = "Sound";
             SDL_Rect sound = {it.rect.x+it.rect.w*5/20-11, it.rect.y+it.rect.h/2-12, 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
             text(app,it.rect.x+it.rect.w*6/10, it.rect.y+it.rect.h/2 , u, "Medium12", {123, 131, 152, 255});
 
+        } else if (it.ID == GO_BUTTON) {
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Go, nullptr,&u );
+        }
+        else if (it.ID == STOP_BUTTON){
+            if (it.onButton) {
+                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            }
+            SDL_Rect u={it.rect.x+3,it.rect.y+3,28,28};
+            SDL_RenderCopy(app.renderer, buttonTextures.Stop, nullptr,&u ); }
+        else if (it.ID == FULLSCREEN_BUTTON) {
+            roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 255, 255, 255, 255);
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3,185,193,206,255);
+            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
+            SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
+        }
 
             if(it.leftClick && !app.fileMenu)
             {
