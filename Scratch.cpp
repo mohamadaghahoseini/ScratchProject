@@ -220,6 +220,7 @@ struct Children{
 
     std::string p1="";
     std::string p2="";
+    bool isrunning=false;
 };
 struct Block{
     int index;
@@ -235,7 +236,11 @@ struct Block{
     std::string p2="";
 
     std::string image;
+    bool isrunning=false;
 };
+
+
+
 struct AppState{
     bool endProgram=false;
     bool fullScreen=false;
@@ -293,7 +298,6 @@ struct AppState{
     SDL_Color colorPaint={153,102,255,255};
     bool isShaping=false;
     bool Confrim=false;
-    const char* filePaths;
     int n=0;
     int xImage=0;
     int yImage=0;
@@ -302,18 +306,33 @@ struct AppState{
     SDL_Rect paintSpace;
     bool fileMenu=false;
     //=-----------
+ 
+float boxh;
+    float boxw;
+    //=-----------
     bool engineRunning= false;
     int engineCurrentIndex=0;
-
+    bool engineFinished=false;
     bool isWaiting=false;
     Uint32 waitStartTime=0;
     Uint32 waitDuration=0;
+    Uint32 waitRemaining=0;
 
     bool isRepeating=false;
-    int  repeatStartIndex = 0;
-    int  repeatEndIndex   = 0;
+    int  repeatBlockIndex=-1;
+   // int  repeatEndIndex   = 0;
     int  repeatTotal      = 0;
     int  repeatCounter    = 0;
+    int repeatInnerIndex=0;
+
+
+
+    bool isSaying= false;
+    std::string say="Hello!";
+    SDL_Texture *saytexture;
+    bool isThinking=false;
+    SDL_Texture *thinktexture;
+    std::string think="Hmm...";
 
 };
 
@@ -563,9 +582,9 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+   // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+      renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
@@ -725,6 +744,13 @@ int main( int argc, char* argv[]) {
 
     Stage stage;
     //Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),90,0,0};
+    app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
+    app.saytexture= LoadTexture(app.renderer,"icons/saying.png");
+    app.thinktexture= LoadTexture(app.renderer,"icons/thinking.png");
+
+
+  
+
   //  app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
 
 
@@ -800,6 +826,8 @@ int main( int argc, char* argv[]) {
     SDL_QueryTexture(app.box.t,NULL,NULL,&w,&h);
     app.box.w=w/2;
     app.box.h=h/2;
+    app.boxh=app.box.h;
+    app.boxw=app.box.w;
 
 
 
@@ -3254,13 +3282,10 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
 
         }
         else if (it.ID == SOUNDS_BUTTON) {
-            roundedRectangleRGBA(app.renderer, 215 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
-                                 209, 255);
-            roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
-                           227, 242, 255);
+            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,209, 255);
+            roundedBoxRGBA(app.renderer, 1 + it.rect.x , it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,227, 242, 255);
             if (it.onButton) {
-                roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10,
-                               230, 240, 255, 255);
+                roundedBoxRGBA(app.renderer, 1 + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,230, 240, 255, 255);
 
             }
             std::string u = "Sound";
@@ -3268,15 +3293,25 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
             text(app,it.rect.x+it.rect.w*6/10, it.rect.y+it.rect.h/2 , u, "Medium12", {123, 131, 152, 255});
 
-        } else if (it.ID == GO_BUTTON) {
-            if (it.onButton) {
-                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
+            if(it.leftClick)
+            {
+                for(auto &it:tabs)
+                {
+                    if(it.ID==TAB_SOUNDS)
+                    {
+                        it.active=true;
+                    }
+                    else if(it.ID!=TAB_GENERAL)
+                    {
+                        it.active=false;
+                    }
+                }
             }
-            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
-            SDL_RenderCopy(app.renderer, buttonTextures.Go, nullptr,&u );
+
         }
-        else if (it.ID == STOP_BUTTON){
-            if (it.onButton) {
+        else if (it.ID == GO_BUTTON) {
+            if (it.onButton)
+            {
                 roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
             }
             SDL_Rect u={it.rect.x+3,it.rect.y+3,28,28};
@@ -3333,8 +3368,6 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
         }
 
-    }
-    SDL_SetRenderTarget(app.renderer,nullptr);
 
 
 
@@ -3360,36 +3393,188 @@ void RenderStage(AppState & app, Box &box)
     SDL_RenderSetClipRect(app.renderer, NULL);
     inverseRoundedBoxRGBA(app.renderer,app.W*950/1503-1,app.H*90/609-1,app.W*1496/1503+1,app.H*366/609+1,15*app.W/1365,230,240,255,255);
 
+////
+if(app.isSaying){
+    float deg=box.angle-90;
+
+    SDL_Rect rect;
+    rect.w=app.W*85/1503;
+    rect.h=app.H*37/609;
+    rect.x=X+115*box.w/200;
+    if(rect.x+rect.w>stagerect.x+stagerect.w)
+        rect.x=stagerect.x+stagerect.w-rect.w;
+    else if(rect.x<stagerect.x)
+        rect.x=stagerect.x;
+
+    rect.y=Y+22*stagerect.h/105-rect.h;
+    if(rect.y<stagerect.y)
+        rect.y=stagerect.y;
+    else if(rect.y+rect.h>stagerect.y+stagerect.h)
+        rect.y=stagerect.y+stagerect.h-rect.h;
+
+    SDL_RenderCopyEx(app.renderer,app.saytexture, nullptr,&rect,0, nullptr,SDL_FLIP_NONE);
+    text(app,rect.x+rect.w/2,rect.y+rect.h*43/100,app.say,"Medium12",{93,100,122,255},false);
+
+}
+
+
+    if(app.isThinking){
+
+        SDL_Rect rect;
+        rect.w=app.W*85/1503;
+        rect.h=app.H*45/609;
+        rect.x=X+115*box.w/200;
+        if(rect.x+rect.w>stagerect.x+stagerect.w)
+            rect.x=stagerect.x+stagerect.w-rect.w;
+        else if(rect.x<stagerect.x)
+            rect.x=stagerect.x;
+
+        rect.y=Y+22*stagerect.h/105-rect.h;
+        if(rect.y<stagerect.y)
+            rect.y=stagerect.y;
+        else if(rect.y+rect.h>stagerect.y+stagerect.h)
+            rect.y=stagerect.y+stagerect.h-rect.h;
+
+        SDL_RenderCopyEx(app.renderer,app.thinktexture, nullptr,&rect,0, nullptr,SDL_FLIP_NONE);
+        text(app,rect.x+rect.w/2,rect.y+rect.h*43/100,app.say,"Medium12",{93,100,122,255},false);
+
+    }
+
 }
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key) {
+    if(go){
+        app.engineRunning=true;
+        go=false;
+    }
     if(stop){
         app.engineRunning=false;
-        stop=false;
+        stop= false;
+    }
+    if(!app.engineRunning){
+        if(app.isWaiting){
+            Uint32 t= SDL_GetTicks()-app.waitStartTime;
+            double T=app.waitDuration-t/1000.0;
+            app.waitRemaining=(T>0)? T:0;
+        }
         return;
     }
-    if(go&& !app.block.empty() &&app.block[0].ID==whenGreenFlagClicked){
-
-        if(app.engineCurrentIndex >= app.block.size())
-            app.engineCurrentIndex= 0;
-        if(app.block[app.engineCurrentIndex].ID == whenGreenFlagClicked)
-            app.engineCurrentIndex++;
-
-
-        app.engineRunning = true;
-        go=false;
-
+    //-- if waiting ended before
+    if (app.engineFinished) {
+        app.engineCurrentIndex = 0;
+        app.engineFinished = false;
+        app.isWaiting = false;
+        app.isSaying=false;
+        app.isThinking=false;
+        app.waitRemaining = 0;
+        app.isRepeating = false;
+        app.repeatCounter = 0;
+       app.repeatInnerIndex = 0;
     }
-    if(app.engineRunning)
-    {
+    if(app.isWaiting&& app.waitRemaining>0){
+        app.waitDuration=app.waitRemaining;
+        app.waitStartTime=SDL_GetTicks();
+        app.waitRemaining=0;
+    }
 
-        for(;app.engineCurrentIndex<app.block.size();app.engineCurrentIndex++){
-            executeBlock(app,app.block[app.engineCurrentIndex],mouse);
-
-        }if(app.engineCurrentIndex >= (int)app.block.size())
-        {
-            app.engineRunning = false;
+    if (app.isWaiting) {
+        Uint32 t = SDL_GetTicks() - app.waitStartTime;
+        if (t>= (Uint32)(app.waitDuration * 1000)) {
+            app.isWaiting = false;
+            app.isSaying=false;
+            app.isThinking=false;
+            app.waitRemaining = 0;
+            if (app.isRepeating) {
+                app.repeatInnerIndex++;
+            } else {
+                app.engineCurrentIndex++;
+            }
+        } else {
+            return;
         }
-    }}
+    }
+    while(true){
+        if(app.isRepeating){
+            int r=app.repeatBlockIndex;
+            auto &innerBlocks=app.block[r].child;
+            while(app.repeatInnerIndex<innerBlocks.size()){
+                auto & b =innerBlocks[app.repeatInnerIndex];
+                if(b.ID==waitSecondes||b.ID==sayForSeconds||b.ID==thinkForSeconds){
+                    app.isWaiting = true;
+                    if(b.ID==waitSecondes){
+                        app.waitDuration = safeStod(b.p1,1);
+                    }
+                    else{app.waitDuration = safeStod(b.p2,2);
+                        Block x;
+                        x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
+                        executeBlock(app,x,mouse);
+                        }
+                    app.waitStartTime = SDL_GetTicks();
+                    app.waitRemaining = 0;
+                    return;
+                }
+                Block x;
+                x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
+                executeBlock(app,x,mouse);
+                app.repeatInnerIndex++;
+            }
+            app.repeatCounter++;
+            if(app.repeatCounter<app.repeatTotal){app.repeatInnerIndex=0;
+                return;
+            }
+            else{
+                app.isRepeating = false;
+                app.repeatCounter = 0;
+                app.repeatInnerIndex = 0;
+                app.engineCurrentIndex = app.repeatBlockIndex + 1;
+            }
+            continue;
+        }
+        if (app.engineCurrentIndex >= (int)app.block.size()) {
+            app.engineRunning = false;
+            app.engineFinished = true;
+            return;
+    }
+        Block &current = app.block[app.engineCurrentIndex];
+
+
+        if (current.ID == whenGreenFlagClicked) {
+            app.engineCurrentIndex++;
+            continue;
+        }
+
+
+        if (current.ID == waitSecondes) {
+            app.isWaiting = true;
+            app.waitDuration = safeStod(current.p1,10);
+            app.waitStartTime = SDL_GetTicks();
+            app.waitRemaining = 0;
+            return;
+        }
+        if (current.ID==sayForSeconds||current.ID==thinkForSeconds) {
+                app.isWaiting = true;
+                app.waitDuration = safeStod(current.p2,2);
+                app.waitStartTime = SDL_GetTicks();
+                app.waitRemaining = 0;
+            executeBlock(app, current,mouse);
+
+                return;
+            }
+
+
+        if (current.ID == repeat) {
+            app.isRepeating = true;
+            app.repeatBlockIndex = app.engineCurrentIndex;
+            app.repeatTotal = safeStod(current.p1,1);
+            app.repeatCounter = 0;
+            app.repeatInnerIndex = 0;
+            continue;
+        }
+
+
+        executeBlock(app, current,mouse);
+        app.engineCurrentIndex++;
+    }
+}
 double safeStod(const std::string &s, double defaultVal )
 {
     if(s.empty()) return defaultVal;
@@ -3397,6 +3582,146 @@ double safeStod(const std::string &s, double defaultVal )
         return std::stod(s);
     } catch(...) {
         return defaultVal;
+    }
+}
+void executeBlock(AppState& app, Block & block,MouseState &mouse){
+    switch(block.ID){
+        case move:{
+            int h=276*app.H/609;
+            int w=546*app.W/1503;
+            app.box.x+= safeStod(block.p1,10)*sin(app.box.angle*M_PI/180.0);
+            app.box.y+=safeStod(block.p1,10)*cos(app.box.angle*M_PI/180.0);
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+            break;
+
+        }
+        case turnRDegrees:
+        {
+            app.box.angle+=safeStod(block.p1,15);
+            break;
+        }
+        case turnLDegrees:
+        {
+            app.box.angle-=safeStod(block.p1,15);
+            break;
+        }
+        case goToXY:
+        {       int h=276*app.H/609;
+            int w=546*app.W/1503;
+            float gx = safeStod(block.p1, 0.0);
+            float gy = safeStod(block.p2, 0.0);
+            app.box.x = gx;
+            app.box.y = gy;
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+            break;
+        }
+        case goToRandomPosition:
+        {
+            int h=276*app.H/609;
+            int w=546*app.W/1503;
+            app.box.x=rand()%w-w/2;
+            app.box.y=rand()%h-h/2;
+            break;
+        }
+        case goToMousePointer:{
+            int h=276*app.H/609;
+            int w=546*app.W/1503;
+            int x=mouse.x-app.W*1223/1503;
+            int y=mouse.y-app.H*228/609;
+            app.box.x=x;
+            app.box.y=-y;
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+
+            break;
+
+
+        }
+        case setSizeTo:{
+            int size= safeStod(block.p1,100);
+            if(size<10)
+                size=10;
+            if(size>600)
+                size=600;
+            app.box.w=size/100.0*app.boxw;
+            app.box.h=size/100.0*app.boxh;
+            break;
+        }
+        case changeSizeBy:{
+            float w=app.box.w*(1+ safeStod(block.p1,10)/100);
+            float h=app.box.h*(1+ safeStod(block.p1,10)/100);
+            if(w>6*app.boxw){
+                w=6*app.boxw;
+                h=6*app.boxh;
+            }
+            app.box.w=w;
+            app.box.h=h;
+            break;
+        }
+        case sayForSeconds:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isSaying=false;
+                app.say="";
+                break;
+            }
+            app.isSaying= true;
+            app.say=u;
+            break;
+        }
+        case thinkForSeconds:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isThinking=false;
+                app.think="";
+                break;
+            }
+            app.isThinking= true;
+            app.think=u;
+            break;
+        }
+
+
+    }
+}
+void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+{
+    if (x1 > x2) std::swap(x1, x2);
+    if (y1 > y2) std::swap(y1, y2);
+    int w = x2 - x1;
+    int h = y2 - y1;
+    if (radius > w / 2) radius = w / 2;
+    if (radius > h / 2) radius = h / 2;
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+    for (int dy = 0; dy < radius; dy++) {
+        int circleX = (int)sqrt((double)(radius * radius - (radius - dy) * (radius - dy)));
+        int fillWidth = radius - circleX;
+        if (fillWidth <= 0) continue;
+        SDL_RenderDrawLine(renderer,x1, y1 + dy,x1 + fillWidth - 1, y1 + dy);
+        SDL_RenderDrawLine(renderer,x2 - fillWidth, y1 + dy,x2 - 1, y1 + dy);
+        SDL_RenderDrawLine(renderer,x1, y2 - 1 - dy,x1 + fillWidth - 1, y2 - 1 - dy);
+        SDL_RenderDrawLine(renderer,x2 - fillWidth, y2 - 1 - dy,x2 - 1, y2 - 1 - dy);
     }
 }
 void executeBlock(AppState& app, Block & block,MouseState &mouse){
