@@ -37,6 +37,19 @@ constexpr int   setBackground=39;
 
 constexpr int   spriteState=40;
 
+constexpr int   showButton=41;
+constexpr int   showButtonActive=42;
+constexpr int   hideButton=43;
+constexpr int   hideButtonActive=44;
+
+constexpr int   nameSpriteTextInput=4041;
+constexpr int   xSpriteTextInput=4042;
+constexpr int   ySpriteTextInput=4043;
+constexpr int   sizeSpriteTextInput=4044;
+constexpr int   directionSpriteTextInput=4045;
+
+
+
 // tab names
 constexpr int TAB_GENERAL=12;
 constexpr int TAB_CODE=13;
@@ -382,12 +395,16 @@ struct AppState{
 
     // Graphic Effects
     float colorEffect = 0;
-    float fisheyeEffect = 0;
-    float whirlEffect = 0;
+    float brightnessEffect = 0.;
+    float ghostEffect=0;
 
     SDL_Surface* boxOriginalSurface = nullptr;
     SDL_Texture* boxEffectTexture = nullptr;
     float lastAppliedColorEffect = -999;
+    SDL_Texture* boxBrightnessTexture = nullptr;
+    float lastAppliedBrightnessEffect = -999;
+    SDL_Texture* boxghostTexture = nullptr;
+    float lastAppliedghostEffect = -999;
 
     SDL_Rect stageRect;
 
@@ -586,7 +603,7 @@ SDL_Texture* base64ToTexture(SDL_Renderer* renderer, const std::string& base64St
 void SaveProject(AppState &app);
 void LoadProject(AppState& app);
 void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
-
+void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app);
 //// Golab function
 
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color,MouseState &mouse,std::vector<AllTabButtons> &tabs);
@@ -603,8 +620,8 @@ void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2
 void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float &h, float &s, float &v);
 void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b);
 SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* original,float colorEffect);
-
-
+SDL_Texture* createGhostTexture(SDL_Renderer* renderer, SDL_Surface* original, float brightnessEffect);
+SDL_Texture* createBrightnessTexture(SDL_Renderer* renderer,SDL_Surface* originalSurface,float brightness);
 
 
 int main( int argc, char* argv[]) {
@@ -679,7 +696,14 @@ int main( int argc, char* argv[]) {
                                          {backgroundGallery, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
                                          {setBackground, SDL_Rect{app.W*1271/1365,app.H*461/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
                                          {uploadBackground, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
-                                         {spriteState, SDL_Rect{app.W*950/1503,app.H - app.H * 210 / 609,-app.W*965/1503+app.W * 1271 / 1350,app.H*210/609}}
+                                         {spriteState, SDL_Rect{app.W*950/1503,app.H - app.H * 210 / 609,-app.W*965/1503+app.W * 1271 / 1350,app.H*90/609}},
+                                         {xSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 233 / 1365, app.H * 411 / 609, app.W * 50 / 1365, app.H * 28 / 609},"0",},
+                                         {ySpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 340 / 1365, app.H * 411 / 609, app.W * 50 / 1365, app.H * 28 / 609},"0"},
+                                         {sizeSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 178 / 1365, app.H * 448 / 609, app.W * 65 / 1365, app.H * 28 / 609},"100"},
+                                         {directionSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 326 / 1365, app.H * 448 / 609, app.W * 65 / 1365, app.H * 28 / 609},"90"},
+                                         {nameSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 50 / 1365, app.H * 411 / 609, app.W * 125 / 1365, app.H * 28 / 609},"Sprite1",true,true},
+                                         {showButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
+                                         {hideButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365+app.W * 36 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
                                  }
 
             },
@@ -896,6 +920,8 @@ int main( int argc, char* argv[]) {
 
     float scale=std::min(app.W/1365.0,app.H/610.0);
 
+    app.font["Roman9"] = TTF_OpenFont("fonts/HelveticaNeue-Roman.otf", std::round(9*scale));
+    app.font["Roman10"] = TTF_OpenFont("fonts/HelveticaNeue-Roman.otf", std::round(10*scale));
     app.font["Roman10.4"] = TTF_OpenFont("fonts/HelveticaNeue-Roman.otf", std::round(10.4*scale));
     if (!app.font["Roman10.4"])
     {
@@ -913,11 +939,15 @@ int main( int argc, char* argv[]) {
     app.font["Roman19"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
     app.font["Roman20"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
     app.font["Roman21"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Bold10"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
     app.font["Bold12"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
     app.font["Bold13"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(13*scale));
     app.font["Bold14"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(14*scale));
     app.font["Bold16"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(16*scale));
     app.font["Bold19"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(19*scale));
+    app.font["Medium9"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(9*scale));
+    app.font["Medium10"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(10*scale));
+    app.font["Medium11"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(11*scale));
     app.font["Medium12"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(12*scale));
     app.font["Medium14"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(14*scale));
     app.font["Medium16"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(16*scale));
@@ -988,6 +1018,7 @@ int main( int argc, char* argv[]) {
         keyboardButtonActions(keyboardButton,app,tabButtons);
         AllTabButtonActions(tabButtons,app,color,texture,mouse,keyboardButton,buttonTextures);
         Engine(app,tabButtons,mouse,keyboardButton);
+        UpdateSpriteState(tabButtons,app);
         SetCursor(app);
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
@@ -1822,7 +1853,7 @@ void CheckIsTyping(AppState &app,std:: vector<AllTabButtons> &tab,MouseState &mo
         if (it1.active)
             for(auto it2:it1.buttons)
             {
-                if(((1000<=it2.ID && it2.ID<=1500) || (3500<=it2.ID && it2.ID<=3503)) && it2.active)
+                if(((1000<=it2.ID && it2.ID<=1500) || (3500<=it2.ID && it2.ID<=3503) || ((4041<=it2.ID && it2.ID<=4045) && !app.engineRunning)) && it2.active)
                 {
                     if(it2.onButton)
                     {
@@ -2039,6 +2070,10 @@ void LoadMyTexture(AppState &app)
     app.texture[Pen]=LoadTexture(app.renderer, "icons/pen.png");
     app.texture[PenPhoto]=LoadTexture(app.renderer, "icons/penPhoto.png");
     app.texture[PenExtension]=LoadTexture(app.renderer, "icons/penExtemsion.png");
+    app.texture[showButton]=LoadTexture(app.renderer, "icons/show.png");
+    app.texture[showButtonActive]=LoadTexture(app.renderer, "icons/showActive.png");
+    app.texture[hideButton]=LoadTexture(app.renderer, "icons/hide.png");
+    app.texture[hideButtonActive]=LoadTexture(app.renderer, "icons/hideActive.png");
 
 }
 void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tabs)
@@ -3178,7 +3213,100 @@ void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect>
 
 
 }
+void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
+{
+    if(app.engineRunning)
+    {
+        for(auto &it1:tabs)
+            if(it1.ID==TAB_GENERAL)
+            {
+                for(auto &it2:it1.buttons)
+                {
+                    if(it2.ID==xSpriteTextInput)
+                    {
+                        it2.text=std::to_string(int(app.box.x));
 
+                    }
+                    if(it2.ID==ySpriteTextInput)
+                    {
+                        it2.text= std::to_string(int(app.box.y));
+                    }
+                    if(it2.ID==sizeSpriteTextInput)
+                    {
+                        it2.text= std::to_string(int(app.box.scale));
+                    }
+                    if(it2.ID==directionSpriteTextInput)
+                    {
+                        it2.text= std::to_string(int(app.box.angle));
+                    }
+                }
+
+            }
+
+    }
+    else
+    {
+        for(auto &it1:tabs)
+            if(it1.ID==TAB_GENERAL)
+            {
+                for(auto &it2:it1.buttons)
+                {
+                    if(it2.ID==xSpriteTextInput)
+                    {
+                        if(it2.text.empty()|| it2.text=="-")
+                            app.box.x=0;
+                        else
+                        {
+                            if(std::stoi(it2.text)>app.stageRect.w/2)
+                                app.box.x=app.stageRect.w/2;
+                            else if(std::stoi(it2.text)<-app.stageRect.w/2)
+                                app.box.x=-app.stageRect.w/2;
+                            else
+                                app.box.x=std::stoi(it2.text);
+                            it2.text=std::to_string(int(app.box.x));
+                        }
+
+                    }
+                    if(it2.ID==ySpriteTextInput)
+                    {
+                        if(it2.text.empty()|| it2.text=="-")
+                            app.box.y=0;
+                        else
+                        {
+                            if(std::stoi(it2.text)>app.stageRect.h/2)
+                                app.box.y=-app.stageRect.h/2;
+                            else if(std::stoi(it2.text)<-app.stageRect.h/2)
+                                app.box.y=app.stageRect.h/2;
+                            else
+                                app.box.y=-std::stoi(it2.text);
+                            it2.text=std::to_string(int(app.box.y));
+                        }
+
+                    }
+                    if(it2.ID==sizeSpriteTextInput)
+                    {
+                        if(it2.text.empty() || it2.text=="-")
+                            app.box.scale=100;
+                        else
+                        {
+                            app.box.scale=std::stoi(it2.text);
+                        }
+
+                    }
+                    if(it2.ID==directionSpriteTextInput)
+                    {
+                        if(it2.text.empty()|| it2.text=="-")
+                            app.box.angle=90;
+                        else
+                        {
+                            app.box.angle=std::stoi(it2.text);
+                        }
+                    }
+                }
+
+            }
+    }
+}
 
 
 
@@ -3300,6 +3428,7 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 
     for(auto &it:buttons)
     {
+        int rad=7;
         if( app.fileMenu)
         {
             if(it.ID==fileMenu)
@@ -3455,8 +3584,90 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
         }
         if(it.ID == spriteState)
         {
-            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15*app.W/1350,255,255,255,255);
-            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15,185,193,206,255);
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15*app.W/1350,255,255,255,255);
+            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,185,193,206,255);
+         //   aalineRGBA(app.renderer,it.rect.x,it.rect.y+app.H*90/609,it.rect.x+it.rect.w,it.rect.y+app.H*90/609,185,193,206,255);
+        }
+        if(4041<=it.ID && it.ID<=4045 && it.active)
+        {
+            if(!it.onButton)
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,218,218,218,255);
+            }
+            else
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,133,92,214,255);
+            }
+            if(it.ID!=nameSpriteTextInput)
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,it.text,"Roman10",SDL_Color{87, 94, 117,255});
+            else
+                 text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,it.text,"Medium10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==nameSpriteTextInput)
+        {
+            text(app,it.rect.x-it.rect.w/6,it.rect.y+it.rect.h/2+2,"Sprite","Medium10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==xSpriteTextInput)
+        {
+            text(app,it.rect.x-it.rect.w/5,it.rect.y+it.rect.h/2+1,"x","Roman10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==ySpriteTextInput)
+        {
+            text(app,it.rect.x-it.rect.w/5,it.rect.y+it.rect.h/2+1,"y","Roman10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==sizeSpriteTextInput)
+        {
+            text(app,it.rect.x-it.rect.w/4,it.rect.y+it.rect.h/2+1,"Size","Roman10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==directionSpriteTextInput)
+        {
+            text(app,it.rect.x-it.rect.w*5/12,it.rect.y+it.rect.h/2+2,"Direction","Roman10",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==showButton)
+        {
+            text(app,it.rect.x-it.rect.w/2,it.rect.y+it.rect.h/2+1,"Show","Roman10",SDL_Color{87, 94, 117,255});
+         if(it.leftClick)
+             app.box.isShowing=true;
+         SDL_Rect rectShow={it.rect.x-1,it.rect.y-1,it.rect.w+1,it.rect.h+2};
+            if(app.box.isShowing)
+            {
+                SDL_RenderSetClipRect(app.renderer,&rectShow);
+                roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+100,it.rect.y+it.rect.h,rad,237,231,249,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+100,it.rect.y+it.rect.h,rad,113,78,182,255);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,showButtonActive,true);
+                SDL_RenderSetClipRect(app.renderer,NULL);
+            }
+            else
+            {
+                SDL_RenderSetClipRect(app.renderer,&rectShow);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+100,it.rect.y+it.rect.h,rad,218,218,218,255);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,showButton,true);
+                SDL_RenderSetClipRect(app.renderer,NULL);
+            }
+        }
+        if(it.ID==hideButton)
+        {
+            if(it.leftClick)
+                app.box.isShowing=false;
+
+            SDL_Rect rectHide={it.rect.x,it.rect.y-1,it.rect.w+2,it.rect.h+2};
+            if(!app.box.isShowing)
+            {
+                SDL_RenderSetClipRect(app.renderer,&rectHide);
+                roundedBoxRGBA(app.renderer,it.rect.x-100,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,rad,237,231,249,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x-100,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,rad,113,78,182,255);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,hideButtonActive,true);
+                SDL_RenderSetClipRect(app.renderer,NULL);
+            }
+            else
+            {
+                SDL_RenderSetClipRect(app.renderer,&rectHide);
+                roundedRectangleRGBA(app.renderer,it.rect.x-100,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,rad,218,218,218,255);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,hideButton,true);
+                SDL_RenderSetClipRect(app.renderer,NULL);
+            }
+            aalineRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x,it.rect.y+it.rect.h,113,78,182,255);
+
         }
     }
 
@@ -3725,6 +3936,9 @@ void RenderStage(AppState & app, Box &box)
     SDL_Rect u={X,Y,int(box.w),int(box.h)};
     SDL_Texture* catTexToRender = app.box.t;
 
+
+
+
     if (app.colorEffect != 0 && app.boxOriginalSurface) {
         if (app.colorEffect != app.lastAppliedColorEffect) {
             if (app.boxEffectTexture) {
@@ -3746,11 +3960,57 @@ void RenderStage(AppState & app, Box &box)
             SDL_DestroyTexture(app.boxEffectTexture);
             app.boxEffectTexture = nullptr;
             app.lastAppliedColorEffect = -999;
+
         }
 
         SDL_SetTextureColorMod(app.box.t, 255, 255, 255);
     }
-
+    if (app.brightnessEffect != 0 && app.boxOriginalSurface) {
+        if (app.brightnessEffect != app.lastAppliedBrightnessEffect) {
+            if (app.boxBrightnessTexture) {
+                SDL_DestroyTexture(app.boxBrightnessTexture);
+                app.boxBrightnessTexture = nullptr;
+            }
+            app.boxBrightnessTexture = createBrightnessTexture(app.renderer,app.boxOriginalSurface,app.brightnessEffect);
+            app.lastAppliedBrightnessEffect = app.brightnessEffect;
+        }
+        if (app.boxBrightnessTexture) {
+            catTexToRender = app.boxBrightnessTexture;
+            u.w = int(box.w / 2 / 250 * 213);
+            u.h = int(box.h / 2 / 250 * 215);
+            u.x = X + (int(box.w) - u.w) / 2;
+            u.y = Y + (int(box.h) - u.h) / 2;
+        }
+    } else if (app.brightnessEffect == 0) {
+        if (app.boxBrightnessTexture) {
+            SDL_DestroyTexture(app.boxBrightnessTexture);
+            app.boxBrightnessTexture = nullptr;
+            app.lastAppliedBrightnessEffect = -999;
+        }
+    }
+    if (app.ghostEffect != 0 && app.boxOriginalSurface) {
+        if (app.ghostEffect != app.lastAppliedghostEffect) {
+            if (app.boxghostTexture) {
+                SDL_DestroyTexture(app.boxghostTexture);
+                app.boxghostTexture = nullptr;
+            }
+            app.boxghostTexture = createGhostTexture(app.renderer,app.boxOriginalSurface,app.ghostEffect);
+            app.lastAppliedghostEffect = app.ghostEffect;
+        }
+        if (app.boxghostTexture) {
+            catTexToRender = app.boxghostTexture;
+            u.w = int(box.w / 2 / 250 * 208);
+            u.h = int(box.h / 2 / 250 * 215);
+            u.x = X + (int(box.w) - u.w) / 2;
+            u.y = Y + (int(box.h) - u.h) / 2;
+        }
+    } else if (app.ghostEffect == 0) {
+        if (app.boxghostTexture) {
+            SDL_DestroyTexture(app.boxghostTexture);
+            app.boxghostTexture = nullptr;
+            app.lastAppliedghostEffect = -999;
+        }
+    }
 
     SDL_RenderCopyEx(app.renderer, catTexToRender, nullptr, &u, box.angle-90, nullptr, SDL_FLIP_NONE);
     SDL_RenderSetClipRect(app.renderer, NULL);
@@ -3803,7 +4063,7 @@ void RenderStage(AppState & app, Box &box)
 
     }
 
-}
+};
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key) {
     if(go){
         app.engineRunning=true;
@@ -3950,8 +4210,8 @@ double safeStod(const std::string &s, double defaultVal )
 void executeBlock(AppState& app, Block & block,MouseState &mouse){
     switch(block.ID){
         case move:{
-            int h=276*app.H/609;
-            int w=546*app.W/1503;
+            int h=app.stageRect.h;
+            int w=app.stageRect.w;
             app.box.x+= safeStod(block.p1,10)*sin(app.box.angle*M_PI/180.0);
             app.box.y+=safeStod(block.p1,10)*cos(app.box.angle*M_PI/180.0);
             if(app.box.x<=-w/2)
@@ -3976,8 +4236,8 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse){
             break;
         }
         case goToXY:
-        {       int h=276*app.H/609;
-            int w=546*app.W/1503;
+        {       int h=app.stageRect.h;
+            int w=app.stageRect.w;
             float gx = safeStod(block.p1, 0.0);
             float gy = safeStod(block.p2, 0.0);
             app.box.x = gx;
@@ -3994,15 +4254,15 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse){
         }
         case goToRandomPosition:
         {
-            int h=276*app.H/609;
-            int w=546*app.W/1503;
+            int h=app.stageRect.h;
+            int w=app.stageRect.w;
             app.box.x=rand()%w-w/2;
             app.box.y=rand()%h-h/2;
             break;
         }
         case goToMousePointer:{
-            int h=276*app.H/609;
-            int w=546*app.W/1503;
+            int h=app.stageRect.h;
+            int w=app.stageRect.w;
             int x=mouse.x-app.W*1223/1503;
             int y=mouse.y-app.H*228/609;
             app.box.x=x;
@@ -4098,21 +4358,21 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse){
         }
 
         case setFishEye: {
-            app.fisheyeEffect = safeStod(block.p1,0);
+            app.brightnessEffect = safeStod(block.p1,0);
 
             break;
         }
 
         case setWhirlEffect: {
-            app.whirlEffect = safeStod(block.p1,0);
+            app.ghostEffect= safeStod(block.p1,0);
 
             break;
         }
 
         case  clearGraphicEffect: {
             app.colorEffect = 0;
-            app.fisheyeEffect = 0;
-            app.whirlEffect = 0;
+            app.brightnessEffect = 0;
+            app.ghostEffect = 0;
             app.lastAppliedColorEffect = -999;
             if (app.boxEffectTexture) {
                 SDL_DestroyTexture(app.boxEffectTexture);
@@ -4206,5 +4466,112 @@ SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* origina
     if (tex) {
         SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
     }
+    return tex;
+}
+SDL_Texture* createGhostTexture(SDL_Renderer* renderer, SDL_Surface* original, float brightnessEffect) {
+
+
+    SDL_Surface* copy = SDL_ConvertSurfaceFormat(original, SDL_PIXELFORMAT_RGBA32, 0);
+    if (!copy) return nullptr;
+
+    SDL_LockSurface(copy);
+    Uint32* pixels = (Uint32*)copy->pixels;
+    int pixelCount = copy->w * copy->h;
+
+    float brightness = brightnessEffect;
+    if (brightness > 100.0f)  brightness = 100.0f;
+    if (brightness < -100.0f) brightness = -100.0f;
+
+    float factor = brightness / 100.0f;  // -1.0 تا +1.0
+
+    for (int i = 0; i < pixelCount; i++) {
+        Uint8 r, g, b, a;
+        SDL_GetRGBA(pixels[i], copy->format, &r, &g, &b, &a);
+        if (a == 0) continue;
+
+        float rf = (float)r;
+        float gf = (float)g;
+        float bf = (float)b;
+
+        if (factor >= 0) {
+
+            rf = rf + (255.0f - rf) * factor;
+            gf = gf + (255.0f - gf) * factor;
+            bf = bf + (255.0f - bf) * factor;
+        } else {
+
+            float absFactor = -factor;  // 0.0 تا 1.0
+            rf = rf * (1.0f - absFactor);
+            gf = gf * (1.0f - absFactor);
+            bf = bf * (1.0f - absFactor);
+        }
+
+
+        Uint8 nr = (Uint8)(rf < 0 ? 0 : (rf > 255 ? 255 : rf));
+        Uint8 ng = (Uint8)(gf < 0 ? 0 : (gf > 255 ? 255 : gf));
+        Uint8 nb = (Uint8)(bf < 0 ? 0 : (bf > 255 ? 255 : bf));
+
+        pixels[i] = SDL_MapRGBA(copy->format, nr, ng, nb, a);
+    }
+
+    SDL_UnlockSurface(copy);
+
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, copy);
+    SDL_FreeSurface(copy);
+
+    if (tex) {
+        SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+    }
+    return tex;
+}
+SDL_Texture* createBrightnessTexture(SDL_Renderer* renderer,SDL_Surface* originalSurface,float brightness)
+{
+    // brightness: -100 to +100 (like Scratch)
+    if (!originalSurface) return nullptr;
+
+    SDL_Surface* copy = SDL_ConvertSurfaceFormat(
+            originalSurface, SDL_PIXELFORMAT_ARGB8888, 0
+    );
+    if (!copy) return nullptr;
+
+    SDL_LockSurface(copy);
+
+    Uint32* pixels = (Uint32*)copy->pixels;
+    int pixelCount = copy->w * copy->h;
+
+    // Exact Scratch formula:
+    // u_brightness = clamp(brightness, -100, 100) / 100.0
+    // RGB_new = clamp(RGB_old + u_brightness, 0.0, 1.0)
+    if (brightness > 100.0f) brightness = 100.0f;
+    if (brightness < -100.0f) brightness = -100.0f;
+
+    float brightnessNorm = brightness / 100.0f;  // -1.0 to +1.0
+    int brightnessInt = (int)(brightnessNorm * 255.0f); // -255 to +255
+
+    for (int i = 0; i < pixelCount; i++) {
+        Uint8 a = (pixels[i] >> 24) & 0xFF;
+        Uint8 r = (pixels[i] >> 16) & 0xFF;
+        Uint8 g = (pixels[i] >> 8)  & 0xFF;
+        Uint8 b =  pixels[i]        & 0xFF;
+
+        if (a == 0) continue;
+
+        // Scratch exact: clamp(channel + brightness * 255, 0, 255)
+        int ri = r + brightnessInt;
+        int gi = g + brightnessInt;
+        int bi = b + brightnessInt;
+
+        if (ri > 255) ri = 255; if (ri < 0) ri = 0;
+        if (gi > 255) gi = 255; if (gi < 0) gi = 0;
+        if (bi > 255) bi = 255; if (bi < 0) bi = 0;
+
+        pixels[i] = ((Uint32)a << 24) | ((Uint32)ri << 16) |
+                    ((Uint32)gi << 8) | (Uint32)bi;
+    }
+
+    SDL_UnlockSurface(copy);
+
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, copy);
+    SDL_FreeSurface(copy);
     return tex;
 }
