@@ -30,6 +30,13 @@ constexpr int   fileNew=24;
 constexpr int   fileSave=25;
 constexpr int   fileLoad=26;
 
+constexpr int   stageBackground=36;
+constexpr int   backgroundGallery=37;
+constexpr int   uploadBackground=38;
+constexpr int   setBackground=39;
+
+constexpr int   spriteState=40;
+
 // tab names
 constexpr int TAB_GENERAL=12;
 constexpr int TAB_CODE=13;
@@ -129,6 +136,16 @@ constexpr int askAndWait=350;
 //MyBlocks 440
 
 // Pen 470
+constexpr int eraseAll=470;
+constexpr int stamp=472;
+constexpr int penDown=474;
+constexpr int penUp=476;
+constexpr int setPenColorTo=478;
+constexpr int setPenBrightnees=480;
+constexpr int setPenSaturation=482;
+
+constexpr int setPenColorToColorInput=4780;
+
 // 30 baray har page yeki dar mian magar text2
 
 constexpr int moveTextInput=1000;
@@ -169,6 +186,8 @@ constexpr int repeatTextInput=1122;
 
 constexpr int askAndWaitTextInput=1150;
 
+constexpr int setPenBrightneesTextInput=1280;
+constexpr int setPenSaturationTextInput=1282;
 
 constexpr int nameCostume=3000;
 constexpr int uploadImage=3001;
@@ -220,6 +239,7 @@ struct Box{
     float x=0,y=0;
     float angle=90;
     SDL_Texture* t= nullptr;
+    SDL_Texture* background= nullptr;
     float w=95,h=100;
     float scale=1;
     bool stop=false;
@@ -239,6 +259,9 @@ struct Children{
     std::string p1="";
     std::string p2="";
     bool isrunning=false;
+
+
+    SDL_Color color;
 };
 struct Block{
     int index;
@@ -255,6 +278,8 @@ struct Block{
 
     std::string image;
     bool isrunning=false;
+
+    SDL_Color color;
 };
 
 
@@ -324,6 +349,8 @@ struct AppState{
     SDL_Rect paintSpace;
     bool fileMenu=false;
     bool activeExtention=false;
+
+    SDL_Color penColor={45,20,111,255};
     //=-----------
 
     float boxh;
@@ -647,7 +674,12 @@ int main( int argc, char* argv[]) {
                                          {fileMenu, SDL_Rect{app.W*10/1365,app.H*40/609,app.W*188/1365,app.H*35*3/609}},
                                          {fileNew, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*0/609,app.W*188/1365,app.H*35/609}},
                                          {fileSave, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*1/609,app.W*188/1365,app.H*35/609}},
-                                         {fileLoad, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}}
+                                         {fileLoad, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
+                                         {stageBackground, SDL_Rect{app.W * 1268 / 1350, app.H - app.H * 210 / 609, app.W * 73 / 1350, app.H * 210 / 609}},
+                                         {backgroundGallery, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
+                                         {setBackground, SDL_Rect{app.W*1271/1365,app.H*461/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
+                                         {uploadBackground, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}},
+                                         {spriteState, SDL_Rect{app.W*950/1503,app.H - app.H * 210 / 609,-app.W*965/1503+app.W * 1271 / 1350,app.H*210/609}}
                                  }
 
             },
@@ -705,8 +737,8 @@ int main( int argc, char* argv[]) {
                                          {changeSizeByTextInput, SDL_Rect{app.W*70/1365+83,app.H*130/610+app.H*diis*4/610+6, 28,23},"10",false},
                                          {setSizeToTextInput, SDL_Rect{app.W*70/1365+60,app.H*130/610+app.H*diis*5/610+6, 28,23},"100",false},
                                          {setColorEffectTextInput, SDL_Rect{app.W*70/1365+133,app.H*130/610+app.H*diis*8/610+7,28,23},"0",false},
-                                         {setFishEyeTextInput, SDL_Rect{app.W * 70 / 1365+144, app.H * 130 / 610+app.H*diis*9/610+7, 28,23},"0",false},
-                                         {setWhirlEffectTextInput, SDL_Rect{app.W*70/1365+133,app.H*130/610+app.H*diis*10/610+7,28,23},"0",false},
+                                         {setFishEyeTextInput, SDL_Rect{app.W * 70 / 1365+163, app.H * 130 / 610+app.H*diis*9/610+7, 28,23},"0",false},
+                                         {setWhirlEffectTextInput, SDL_Rect{app.W*70/1365+136,app.H*130/610+app.H*diis*10/610+7,28,23},"0",false},
 
                                          {playSoundMeow, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 178, 38},"",false},
                                          {startSoundMeow, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*1/610,127,38},"",false},
@@ -740,6 +772,17 @@ int main( int argc, char* argv[]) {
 
                                          {askAndWait, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 191, 38},"",false},
                                          {askAndWaitTextInput, SDL_Rect{app.W * 70 / 1365+33, app.H * 130 / 610+6, 108, 23},"What's your name?",false,true},
+
+                                         {eraseAll, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 91, 44},"",false},
+                                         {stamp, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*1/610,79,44},"",false},
+                                         {penDown, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*2/610,97,44},"",false},
+                                         {penUp, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*3/610,83,44},"",false},
+                                         {setPenColorTo, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*4/610,146,44},"",false},
+                                         {setPenBrightnees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*5/610,216,44},"",false},
+                                         {setPenSaturation, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*6/610,213,44},"",false},
+                                         {setPenBrightneesTextInput, SDL_Rect{app.W*70/1365+183,app.H*130/610+app.H*dis*5/610+9,28,23},"50",false},
+                                         {setPenSaturationTextInput, SDL_Rect{app.W*70/1365+181,app.H*130/610+app.H*dis*6/610+9,28,23},"50",false},
+                                         {setPenColorToColorInput, SDL_Rect{app.W*70/1365+127,app.H*130/610+app.H*dis*4/610+10,23,17},"",false},
                                  }
             },
             {TAB_COSTUMES,false ,  {{nameCostume,SDL_Rect{app.W * 215 / 1365, app.H * 113 / 609, app.W * 125 / 1365, app.H * 28 / 609}},
@@ -786,13 +829,15 @@ int main( int argc, char* argv[]) {
     app.paint[circle]=false;
     app.paint[lineS]=false;
     app.paint[fill]=false;
-    app.stageRect={app.W*950/1503,app.H*90/609,app.W*549/1503,app.H*276/609};
+
+   // app.stageRect={app.W*950/1503,app.H*90/609,app.W*549/1503,app.H*276/609};
+    app.stageRect={app.W*950/1503,app.H*90/609,app.W*543/1503,app.H*300/609};
 
     Stage stage;
     //Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),90,0,0};
     //app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
-    SDL_Surface* surf = IMG_Load("icons/gorba(1).png");  // همون مسیر خودت
-    app.boxOriginalSurface = surf;                    // ← اضافه کن (آزادش نکن!)
+    SDL_Surface* surf = IMG_Load("icons/gorba(1).png");
+    app.boxOriginalSurface = surf;
     app.box.t = SDL_CreateTextureFromSurface(app.renderer, surf);
     app.saytexture= LoadTexture(app.renderer,"icons/saying.png");
     app.thinktexture= LoadTexture(app.renderer,"icons/thinking.png");
@@ -834,6 +879,14 @@ int main( int argc, char* argv[]) {
                 }
         }
     }
+    app.box.background=SDL_CreateTexture(
+            app.renderer,
+            SDL_PIXELFORMAT_RGBA8888,
+            SDL_TEXTUREACCESS_TARGET,
+            app.stageRect.w,
+            app.stageRect.h
+    );
+    SDL_SetTextureBlendMode(app.box.background, SDL_BLENDMODE_BLEND);
 
 
 
@@ -1213,6 +1266,38 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
             else
                 text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,it.text,"Roman11",SDL_Color{87, 94, 117,255});
         }
+        if(it.ID==setPenColorTo && app.activeCodePage[9])
+        {
+            filledEllipseRGBA(app.renderer,it.rect.x+138,it.rect.y+18,12+1,11,app.penColor.r,app.penColor.g,app.penColor.b,app.penColor.a);
+            aaellipseRGBA(app.renderer,it.rect.x+138,it.rect.y+18,12+1,11,168,189,203,255);
+        }
+        if(it.ID==setPenColorToColorInput && app.activeCodePage[9])
+        {
+            if(it.leftClick)
+            {
+                unsigned char defaultRGB[3] = {
+                        app.colorPaint.r,
+                        app.colorPaint.g,
+                        app.colorPaint.b
+                };
+                unsigned char resultRGB[3] = { 0, 0, 0 };
+
+                const char* result = tinyfd_colorChooser(
+                        "Choose Color",
+                        NULL,
+                        defaultRGB,
+                        resultRGB
+                );
+
+                if (result != NULL)
+                {
+                    app.penColor.r = resultRGB[0];
+                    app. penColor.g = resultRGB[1];
+                    app.penColor.b = resultRGB[2];
+                    app.penColor.a = 255;
+                }
+            }
+        }
 
     }
 
@@ -1320,6 +1405,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                 app.blockHelper.index=app.block.size();
                 app.blockHelper.rect.w=it.rect.w;
                 app.blockHelper.rect.h=it.rect.h;
+                app.blockHelper.color=app.penColor;
 
                 app.blockHelper.rectText1 = {0,0,0,0};
                 app.blockHelper.rectText2 = {0,0,0,0};
@@ -1424,6 +1510,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                             app.childHelper.ID=app.blockHelper.ID;
                             app.childHelper.indexParents=app.block[app.block.size()-1].index;
                             app.childHelper.index=0;
+                            app.childHelper.color=app.penColor;
 
                             app.block[app.block.size()-1].rect.h=87;
 
@@ -1452,6 +1539,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                             app.childHelper.ID=app.blockHelper.ID;
                             app.childHelper.indexParents=app.block[app.block.size()-1].index;
                             app.childHelper.index=app.block[app.block.size()-1].child.size();
+                            app.childHelper.color=app.penColor;
 
                             app.block[app.block.size()-1].rect.h+=app.blockHelper.rect.h;
 
@@ -1824,6 +1912,11 @@ void DrawBlock(AppState &app,Block &block)
     //   std::cout<<block.child.size()<<std::endl;
     if(block.type==loop && block.child.size()!=0)
     {
+        if(block.ID==setPenColorTo)
+        {
+            filledEllipseRGBA(app.renderer,block.rect.x+138,block.rect.y+18,12+1,11,block.color.r,block.color.g,block.color.b,block.color.a);
+            aaellipseRGBA(app.renderer,block.rect.x+138,block.rect.y+18,12+1,11,168,189,203,255);
+        }
         image(app,block.rect.x,block.rect.y,1,block.ID,false,0,0,1,37.0/76.0);
         for(int i=0;i<block.child.size();i++)
         {
@@ -1845,6 +1938,11 @@ void DrawBlock(AppState &app,Block &block)
     else
     {
         image(app,block.rect.x,block.rect.y,1,block.ID);
+    }
+    if(block.ID==setPenColorTo)
+    {
+        filledEllipseRGBA(app.renderer,block.rect.x+138,block.rect.y+18,12+1,11,block.color.r,block.color.g,block.color.b,block.color.a);
+        aaellipseRGBA(app.renderer,block.rect.x+138,block.rect.y+18,12+1,11,168,189,203,255);
     }
     if(block.rectText1.w != 0)
     {
@@ -1881,8 +1979,8 @@ void LoadMyTexture(AppState &app)
     app.texture[show]=LoadTexture(app.renderer,"blocks/show.png");
     app.texture[hide]=LoadTexture(app.renderer,"blocks/hide.png");
     app.texture[setColorEffect]=LoadTexture(app.renderer,"blocks/setColorEffect.png");
-    app.texture[setFishEye]=LoadTexture(app.renderer,"blocks/setFishEye.png");
-    app.texture[setWhirlEffect]=LoadTexture(app.renderer,"blocks/setWhirlEffect.png");
+    app.texture[setFishEye]=LoadTexture(app.renderer,"blocks/SetBrightnessEffectBy.png");
+    app.texture[setWhirlEffect]=LoadTexture(app.renderer,"blocks/setGhostEffectBy.png");
     app.texture[clearGraphicEffect]=LoadTexture(app.renderer,"blocks/clearGraphicEffect.png");
 
     app.texture[playSoundMeow]=LoadTexture(app.renderer,"blocks/slaySound.png");
@@ -1908,6 +2006,14 @@ void LoadMyTexture(AppState &app)
 
 
     app.texture[askAndWait]=LoadTexture(app.renderer,"blocks/askAndWait.png");
+
+    app.texture[eraseAll]=LoadTexture(app.renderer,"blocks/eraseAll.png");
+    app.texture[stamp]=LoadTexture(app.renderer,"blocks/stamp.png");
+    app.texture[penDown]=LoadTexture(app.renderer,"blocks/penDown.png");
+    app.texture[penUp]=LoadTexture(app.renderer,"blocks/penUp.png");
+    app.texture[setPenColorTo]=LoadTexture(app.renderer,"blocks/setPenColorTo.png");
+    app.texture[setPenBrightnees]=LoadTexture(app.renderer,"blocks/setPenBrightnees.png");
+    app.texture[setPenSaturation]=LoadTexture(app.renderer,"blocks/setPenSaturation.png");
 
     app.texture[mouseButton]=LoadTexture(app.renderer,"icons/mouse.png");
     app.texture[eraser]=LoadTexture(app.renderer,"icons/eraser.png");
@@ -3341,6 +3447,16 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
         {
             if(!app.fileMenu)
                 app.fileMenu=true;
+        }
+        if(it.ID == stageBackground)
+        {
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15*app.W/1350,255,255,255,255);
+            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15,185,193,206,255);
+        }
+        if(it.ID == spriteState)
+        {
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15*app.W/1350,255,255,255,255);
+            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15,185,193,206,255);
         }
     }
 
