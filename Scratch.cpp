@@ -12,7 +12,7 @@
 using json = nlohmann::json;
 
 //   Button names
-constexpr int CLOSE_BUTTON=9;
+constexpr int CLOSE_BUTTON=27;
 constexpr int WINDOW_BUTTON=10;
 constexpr int MINIMIZED_BUTTON=11;
 constexpr int FILE_BUTTON=14;
@@ -35,6 +35,7 @@ constexpr int TAB_GENERAL=12;
 constexpr int TAB_CODE=13;
 constexpr int TAB_COSTUMES=14;
 constexpr int TAB_SOUNDS=15;
+constexpr int TAB_EXTENSION=32;
 
 constexpr int Motion=0;
 constexpr int Looks=1;
@@ -45,10 +46,16 @@ constexpr int Sensing=5;
 constexpr int Operators=6;
 constexpr int Variables=7;
 constexpr int MyBlocks=8;
+constexpr int Pen=9;
 
 constexpr int WorkSpace=17;
-
-
+constexpr int Extension=28;
+constexpr int PenExtension=29;
+constexpr int BackExtension=30;
+constexpr int PenPhoto=31;
+constexpr int CLOSE_BUTTONExtension=33;
+constexpr int WINDOW_BUTTONExtension=34;
+constexpr int MINIMIZED_BUTTONExtension=35;
 //------------------ sprite names
 constexpr int gorbaFront=100;
 constexpr int gorbaBack=101;
@@ -61,7 +68,7 @@ constexpr int start=2003;
 
 
 // 30 baray har page yeki dar mian
-
+// Motion
 constexpr int move=200;
 constexpr int turnRDegrees=202;
 constexpr int turnLDegrees=204;
@@ -72,7 +79,7 @@ constexpr int changeXBy=212;
 constexpr int setXTo=214;
 constexpr int changeYBy=216;
 constexpr int setYTo=218;
-
+//Looks
 constexpr int sayForSeconds=230;
 constexpr int say=232;
 constexpr int thinkForSeconds=234;
@@ -85,7 +92,7 @@ constexpr int setColorEffect=246;
 constexpr int setFishEye=248;
 constexpr int setWhirlEffect=250;
 constexpr int clearGraphicEffect=252;
-
+// Sound
 constexpr int playSoundMeow=260;
 constexpr int startSoundMeow=262;
 constexpr int stopAllSounds=264;
@@ -94,7 +101,7 @@ constexpr int setPitchEffectTo=268;
 constexpr int clearSoundEffects=270;
 constexpr int changeVolumeBy=272;
 constexpr int setVolumeTo=274;
-
+//Events
 constexpr int whenGreenFlagClicked=290;
 constexpr int whenSpaceKeyPressed=292;
 constexpr int whenThisSpriteClicked=294;
@@ -105,14 +112,23 @@ constexpr int broadcastAndWait=300;
 
 
 // 320 loops
+//Controls
 constexpr int  waitSecondes=320;
 constexpr int  repeatHelper=321;
 constexpr int repeat=322;
 constexpr int forever =324;
 
-
+//Sensing
 constexpr int askAndWait=350;
 
+//Operator 380
+
+//Varaibles 410
+
+
+//MyBlocks 440
+
+// Pen 470
 // 30 baray har page yeki dar mian magar text2
 
 constexpr int moveTextInput=1000;
@@ -207,6 +223,8 @@ struct Box{
     float w=95,h=100;
     float scale=1;
     bool stop=false;
+    bool isShowing=true;
+
 
 };
 struct Children{
@@ -220,6 +238,7 @@ struct Children{
 
     std::string p1="";
     std::string p2="";
+    bool isrunning=false;
 };
 struct Block{
     int index;
@@ -235,7 +254,11 @@ struct Block{
     std::string p2="";
 
     std::string image;
+    bool isrunning=false;
 };
+
+
+
 struct AppState{
     bool endProgram=false;
     bool fullScreen=false;
@@ -268,7 +291,7 @@ struct AppState{
 
     // Code Tab
     // در صورت بروز مشکل برای عوض کردن تب ها این بخش چک بشه
-    bool activeCodePage[9]= {};
+    bool activeCodePage[10]= {};
     std::map<std::string,TTF_Font*> font;
     std::map<int,bool> paint;
     std::vector<Block> block;
@@ -293,7 +316,6 @@ struct AppState{
     SDL_Color colorPaint={153,102,255,255};
     bool isShaping=false;
     bool Confrim=false;
-    const char* filePaths;
     int n=0;
     int xImage=0;
     int yImage=0;
@@ -301,19 +323,47 @@ struct AppState{
     std::vector<UploadedImageCostume> imageCos;
     SDL_Rect paintSpace;
     bool fileMenu=false;
+    bool activeExtention=false;
+    //=-----------
+
+    float boxh;
+    float boxw;
     //=-----------
     bool engineRunning= false;
     int engineCurrentIndex=0;
-
+    bool engineFinished=false;
     bool isWaiting=false;
     Uint32 waitStartTime=0;
     Uint32 waitDuration=0;
+    Uint32 waitRemaining=0;
 
     bool isRepeating=false;
-    int  repeatStartIndex = 0;
-    int  repeatEndIndex   = 0;
+    int  repeatBlockIndex=-1;
+    // int  repeatEndIndex   = 0;
     int  repeatTotal      = 0;
     int  repeatCounter    = 0;
+    int repeatInnerIndex=0;
+
+
+
+    bool isSaying= false;
+    std::string say="Hello!";
+    SDL_Texture *saytexture;
+    bool isThinking=false;
+    SDL_Texture *thinktexture;
+    std::string think="Hmm...";
+
+    // Graphic Effects
+    float colorEffect = 0;
+    float fisheyeEffect = 0;
+    float whirlEffect = 0;
+
+    SDL_Surface* boxOriginalSurface = nullptr;
+    SDL_Texture* boxEffectTexture = nullptr;
+    float lastAppliedColorEffect = -999;
+
+    SDL_Rect stageRect;
+
 
 };
 
@@ -454,7 +504,7 @@ struct Sprite {
 
 
     int layer=0;
-   // std::string costume;
+    // std::string costume;
     //std::map<std::,std::
 };
 struct Stage{
@@ -491,7 +541,7 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
 
 
 void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
-void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &,TabTexture &tex,MouseState &mouse);
+void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &,TabTexture &tex,MouseState &mouse,std::vector<AllTabButtons> &tab);
 void active(int id,std:: vector<AllTabButtons> &tab,bool ac=true);
 void text( AppState &app,int x,int y,std::string T,std::string F,SDL_Color color,bool xyNotMiddle=false);
 void image(AppState &app,int x,int y,double scale,int id,bool xtMiddle=false,int readX=0,int readY=0,double readWScale=1,double readHScale=1);
@@ -508,6 +558,7 @@ std::string textureToBase64(SDL_Renderer* renderer, SDL_Texture* texture);
 SDL_Texture* base64ToTexture(SDL_Renderer* renderer, const std::string& base64Str, int w, int h);
 void SaveProject(AppState &app);
 void LoadProject(AppState& app);
+void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
 
 //// Golab function
 
@@ -522,6 +573,12 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
 double safeStod(const std::string &s, double defaultVal );
 void executeBlock(AppState& app, Block & block,MouseState &mouse);
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float &h, float &s, float &v);
+void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b);
+SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* original,float colorEffect);
+
+
+
 
 int main( int argc, char* argv[]) {
     AppState app;
@@ -563,18 +620,14 @@ int main( int argc, char* argv[]) {
 
     SDL_Renderer *renderer;
 
-    renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
+    // renderer= SDL_CreateRenderer(window,-1,SDL_RENDERER_SOFTWARE);   //SDL_RENDERER_ACCELERATED or SDL_RENDERER_SOFTWARE
     // Mamad
-    //  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC);
     app.renderer=renderer;
     ButtonTextures buttonTextures= LoadAllButtonTexture(app.renderer);
 
     LoadMyTexture(app);
 
-    constexpr int setColorEffect=246;
-    constexpr int setFishEye=248;
-    constexpr int setWhirlEffect=250;
-    constexpr int clearGraphicEffect=252;
     // Variable declaration
     int iconSize=40;
     int dis=44,diis=40;
@@ -595,7 +648,7 @@ int main( int argc, char* argv[]) {
                                          {fileNew, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*0/609,app.W*188/1365,app.H*35/609}},
                                          {fileSave, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*1/609,app.W*188/1365,app.H*35/609}},
                                          {fileLoad, SDL_Rect{app.W*10/1365,app.H*40/609+app.H*35*2/609,app.W*188/1365,app.H*35/609}}
-            }
+                                 }
 
             },
             {TAB_CODE,    true, {{Motion,   SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
@@ -607,7 +660,9 @@ int main( int argc, char* argv[]) {
                                          {Operators, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 6 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {Variables, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 7 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {MyBlocks, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 8 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
+                                         {Pen, SDL_Rect{0, app.H * 90 / 609 + app.H * 45 * 9 / 609,app.W * 60 / 1365, app.H * 45 / 609}},
                                          {WorkSpace, SDL_Rect{app.W*250/1365,app.H*90/559,app.W*853/1365-15*app.W/1365-app.W*250/1365,app.H-app.H*90/559}},
+                                         {Extension, SDL_Rect{0, app.H-app.H*38/609,app.W * 60 / 1365, app.H*38/609}},
 
                                          {move, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 101, 38}},
                                          {turnRDegrees, SDL_Rect{app.W*70/1365,app.H*130/610+app.H*dis*1/610,128,38}},
@@ -685,7 +740,7 @@ int main( int argc, char* argv[]) {
 
                                          {askAndWait, SDL_Rect{app.W * 70 / 1365, app.H * 130 / 610, 191, 38},"",false},
                                          {askAndWaitTextInput, SDL_Rect{app.W * 70 / 1365+33, app.H * 130 / 610+6, 108, 23},"What's your name?",false,true},
-            }
+                                 }
             },
             {TAB_COSTUMES,false ,  {{nameCostume,SDL_Rect{app.W * 215 / 1365, app.H * 113 / 609, app.W * 125 / 1365, app.H * 28 / 609}},
                                          {uploadImage,SDL_Rect{app.W * 215 / 1365, app.H * 163 / 609, app.W * 125 / 1365, app.H * 28 / 609}},
@@ -709,9 +764,18 @@ int main( int argc, char* argv[]) {
                                          {flipVertical,SDL_Rect{app.W * 435 / 1365, app.H * 105 / 609, app.W * 80 / 1365, app.H * 50 / 609}},
                                          {deleteButton,SDL_Rect{app.W * 515 / 1365, app.H * 105 / 609, app.W * 80 / 1365, app.H * 50 / 609}},
                                          {colorChose,SDL_Rect{app.W * 175 / 1365, app.H * 440 / 609, 35, 36}}
+                                 }
+            },
+            {TAB_EXTENSION,false,{{BackExtension,SDL_Rect{0,0,app.W * 130 / 1365, app.H * 50 / 609}},
+                                         {PenExtension,SDL_Rect{app.W * 20 / 1365, app.H * 70 / 609, 297, app.H * 245 / 609}},
+                                         {CLOSE_BUTTONExtension, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
+                                         {WINDOW_BUTTONExtension, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
+                                         {MINIMIZED_BUTTONExtension, SDL_Rect{app.W-app.W*3/30,0,app.W/30,app.H/25}}
+                                    }
+
             }
-            }
-            };
+
+    };
 
 
     app.paint[mouseButton]=true;
@@ -722,10 +786,21 @@ int main( int argc, char* argv[]) {
     app.paint[circle]=false;
     app.paint[lineS]=false;
     app.paint[fill]=false;
+    app.stageRect={app.W*950/1503,app.H*90/609,app.W*549/1503,app.H*276/609};
 
     Stage stage;
     //Sprite gorba{gorbaFront,0, 0,100,100, LoadTexture(app.renderer,"icons/gorba(1).png"),90,0,0};
-  //  app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
+    //app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
+    SDL_Surface* surf = IMG_Load("icons/gorba(1).png");  // همون مسیر خودت
+    app.boxOriginalSurface = surf;                    // ← اضافه کن (آزادش نکن!)
+    app.box.t = SDL_CreateTextureFromSurface(app.renderer, surf);
+    app.saytexture= LoadTexture(app.renderer,"icons/saying.png");
+    app.thinktexture= LoadTexture(app.renderer,"icons/thinking.png");
+
+
+
+
+    //  app.box.t=LoadTexture(app.renderer,"icons/gorba(1).png");
 
 
     for(auto &it1:tabButtons)
@@ -733,30 +808,30 @@ int main( int argc, char* argv[]) {
         if(it1.ID==TAB_COSTUMES)
         {
             for(auto &it2:it1.buttons)
-            if(it2.ID==showSpace)
-            {
-                app.paintSpace=it2.rect;
-               app.textureHelperCos= SDL_CreateTexture(app.renderer,
-                                                       SDL_PIXELFORMAT_RGBA8888,
-                                                      SDL_TEXTUREACCESS_TARGET,
-                                                      it2.rect.w,
-                                                      it2.rect.h);
-                SDL_SetTextureBlendMode(app.textureHelperCos, SDL_BLENDMODE_BLEND);
-                app.box.t=SDL_CreateTexture(
-                        app.renderer,
-                        SDL_PIXELFORMAT_RGBA8888,
-                        SDL_TEXTUREACCESS_TARGET,
-                        it2.rect.w,
-                        it2.rect.h
-                );
-                SDL_SetTextureBlendMode(app.box.t, SDL_BLENDMODE_BLEND);
-                SDL_SetRenderTarget(app.renderer,app.box.t);
-                SDL_SetRenderDrawColor(app.renderer,0,0,0,0);
-                SDL_RenderClear(app.renderer);
-                image(app,it2.rect.w/2,it2.rect.h/2, 1, gorbaStandard, true);
-                SDL_SetRenderTarget(app.renderer,NULL);
-                break;
-            }
+                if(it2.ID==showSpace)
+                {
+                    app.paintSpace=it2.rect;
+                    app.textureHelperCos= SDL_CreateTexture(app.renderer,
+                                                            SDL_PIXELFORMAT_RGBA8888,
+                                                            SDL_TEXTUREACCESS_TARGET,
+                                                            it2.rect.w,
+                                                            it2.rect.h);
+                    SDL_SetTextureBlendMode(app.textureHelperCos, SDL_BLENDMODE_BLEND);
+                    app.box.t=SDL_CreateTexture(
+                            app.renderer,
+                            SDL_PIXELFORMAT_RGBA8888,
+                            SDL_TEXTUREACCESS_TARGET,
+                            it2.rect.w,
+                            it2.rect.h
+                    );
+                    SDL_SetTextureBlendMode(app.box.t, SDL_BLENDMODE_BLEND);
+                    SDL_SetRenderTarget(app.renderer,app.box.t);
+                    SDL_SetRenderDrawColor(app.renderer,0,0,0,0);
+                    SDL_RenderClear(app.renderer);
+                    image(app,it2.rect.w/2,it2.rect.h/2, 1, gorbaStandard, true);
+                    SDL_SetRenderTarget(app.renderer,NULL);
+                    break;
+                }
         }
     }
 
@@ -778,12 +853,22 @@ int main( int argc, char* argv[]) {
     app.font["Roman12"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(12*scale));
     app.font["Roman13"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(13*scale));
     app.font["Roman14"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(14*scale));
+    app.font["Roman15"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(15*scale));
+    app.font["Roman16"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Roman17"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Roman18"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Roman19"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Roman20"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
+    app.font["Roman21"]=TTF_OpenFont("fonts/HelveticaNeue-Roman.otf",std::round(16*scale));
     app.font["Bold12"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(12*scale));
     app.font["Bold13"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(13*scale));
     app.font["Bold14"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(14*scale));
+    app.font["Bold16"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(16*scale));
     app.font["Bold19"]=TTF_OpenFont("fonts/HelveticaNeue-Bold.otf",std::round(19*scale));
     app.font["Medium12"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(12*scale));
     app.font["Medium14"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(14*scale));
+    app.font["Medium16"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(16*scale));
+    app.font["Medium17"]=TTF_OpenFont("fonts/HelveticaNeue-Medium.otf",std::round(16*scale));
     app.font["Thin14"]=TTF_OpenFont("fonts/HelveticaNeue-Thin.otf",std::round(14*scale));
 
 
@@ -800,6 +885,8 @@ int main( int argc, char* argv[]) {
     SDL_QueryTexture(app.box.t,NULL,NULL,&w,&h);
     app.box.w=w/2;
     app.box.h=h/2;
+    app.boxh=app.box.h;
+    app.boxw=app.box.w;
 
 
 
@@ -846,11 +933,8 @@ int main( int argc, char* argv[]) {
         }
         CheckIsTyping(app,tabButtons,mouse);
         keyboardButtonActions(keyboardButton,app,tabButtons);
-
         AllTabButtonActions(tabButtons,app,color,texture,mouse,keyboardButton,buttonTextures);
-        RenderStage(app,app.box);
         Engine(app,tabButtons,mouse,keyboardButton);
-
         SetCursor(app);
         SDL_RenderPresent(renderer);
         SDL_Delay(5);
@@ -966,7 +1050,7 @@ void updateButtonRectAndMouseState(MouseState &mouse,std:: vector<AllTabButtons>
         {
             mouse.rightPressed=true;
             mouse.rightDown= true;
-        SDL_GetMouseState(&mouse.xRightDown,&mouse.yRightDown);
+            SDL_GetMouseState(&mouse.xRightDown,&mouse.yRightDown);
         }
 
         // Update Buttons
@@ -1023,7 +1107,7 @@ void keyboardButtonActions(KeyboardButton &key, AppState &app,std:: vector<AllTa
 {
     if((key.pressed[SDL_SCANCODE_LALT] || key.pressed[SDL_SCANCODE_RALT]) && key.pressed[SDL_SCANCODE_F4])
     {
-       app.endProgram=true;
+        app.endProgram=true;
     }
 }
 void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &color,TabTexture &texture,MouseState &mouse,KeyboardButton &key,ButtonTextures buttonTextures)
@@ -1035,13 +1119,20 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
                 case TAB_GENERAL:
                     RenderTextureGeneral(tab[0].buttons,app,color.general,texture,buttonTextures,tab,mouse,key);
                     SDL_RenderCopy(app.renderer,texture.general, nullptr, nullptr);
+                    if(app.box.isShowing)
+                        RenderStage(app,app.box);
                     break;
                 case TAB_CODE:
-                    RenderCodeTap(it.buttons,app,color.code,texture,mouse);
+                    RenderCodeTap(it.buttons,app,color.code,texture,mouse,tab);
                     break;
                 case TAB_COSTUMES:
                     RenderCostumesTap(it.buttons,app,color.code,texture,mouse,tab);
                     break;
+                case TAB_EXTENSION:
+                    RenderExtensionTab(tab,it.buttons,app,color.code,texture);
+                    break;
+
+
             }
 
         }
@@ -1056,27 +1147,31 @@ void AllTabButtonActions(std::vector<AllTabButtons> &tab,AppState &app,Theme &co
         }
 
 }
-void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse)
+void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tab)
 {
     for(auto &it:buttons)
     {
-        if(0<=it.ID && it.ID<=8 && it.leftClick && !app.fileMenu)
+        if (  ((0 <= it.ID && it.ID <= 8) || (it.ID==Pen && app.activeExtention) )&& it.leftClick && !app.fileMenu)
         {
-            memset(app.activeCodePage,0,sizeof(app.activeCodePage));
-            app.activeCodePage[it.ID]=true;
-            for(auto &it2:buttons)
-            {
-                if(it.ID*30+200<=it2.ID && it2.ID<it.ID*30+200+30)
-                    it2.active=true;
-                else if(200<=it2.ID && it2.ID<=500)
-                    it2.active=false;
-                if(it.ID*30+1000<=it2.ID && it2.ID<it.ID*30+1000+30)
-                    it2.active=true;
-                else if(1000<=it2.ID && it2.ID<=1500)
-                    it2.active=false;
+            memset(app.activeCodePage, 0, sizeof(app.activeCodePage));
+            app.activeCodePage[it.ID] = true;
+            for (auto &it2: buttons) {
+                if (it.ID * 30 + 200 <= it2.ID && it2.ID < it.ID * 30 + 200 + 30)
+                    it2.active = true;
+                else if (200 <= it2.ID && it2.ID <= 500)
+                    it2.active = false;
+                if (it.ID * 30 + 1000 <= it2.ID && it2.ID < it.ID * 30 + 1000 + 30)
+                    it2.active = true;
+                else if (1000 <= it2.ID && it2.ID <= 1500)
+                    it2.active = false;
             }
-            RenderTextureCodeTab(buttons,app,color,texture);
+            RenderTextureCodeTab(buttons, app, color, texture);
             break;
+        }
+        if (it.ID == Pen && it.leftClick && !app.fileMenu && app.activeExtention)
+        {
+            memset(app.activeCodePage, 0, sizeof(app.activeCodePage));
+            app.activeCodePage[9] = true;
         }
     }
 
@@ -1086,7 +1181,7 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
     {
         for(auto &it:app.allblock)
         {
-           DrawBlock(app,it);
+            DrawBlock(app,it);
         }
     }
     if(!app.block.empty())
@@ -1114,9 +1209,9 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
         if(1000 <= it.ID && it.ID <= 1500 && it.active)
         {
             if(it.ID==1060 || it.ID==1062)
-                 text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,it.text,"Roman11",SDL_Color{255, 255, 255,255});
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,it.text,"Roman11",SDL_Color{255, 255, 255,255});
             else
-                  text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,it.text,"Roman11",SDL_Color{87, 94, 117,255});
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,it.text,"Roman11",SDL_Color{87, 94, 117,255});
         }
 
     }
@@ -1190,8 +1285,21 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                 else
                     text(app,it.rect.w/2,it.rect.y+app.H*35/609,"My Blocks","Roman10.4",color.leftPanelText);
             }
+            else if(it.ID==Pen)
+            {
+                if(it.onButton)
+                    text(app,it.rect.w/2,it.rect.y+app.H*35/609,"Pen","Roman10.4",color.leftPanelTextMouse);
+                else
+                    text(app,it.rect.w/2,it.rect.y+app.H*35/609,"Pen","Roman10.4",color.leftPanelText);
+            }
         }
-
+        if(it.ID==Pen && app.activeExtention)
+        {
+            if(it.onButton)
+                text(app,it.rect.w/2,it.rect.y+app.H*35/609,"Pen","Roman10.4",color.leftPanelTextMouse);
+            else
+                text(app,it.rect.w/2,it.rect.y+app.H*35/609,"Pen","Roman10.4",color.leftPanelText);
+        }
         if(200 <= it.ID && it.ID <= 500 && it.active)
         {
             if(it.onButton)
@@ -1262,82 +1370,21 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
             if( app.pressedBlock && mouse.leftUp)
             {
                 if(mouse.x-app.deltaXMouseBlock+app.blockHelper.rect.w<=app.workSpace.x+app.workSpace.w && app.workSpace.x<=mouse.x-app.deltaXMouseBlock && mouse.y-app.deltaYMouseBlock+app.blockHelper.rect.h<=app.workSpace.y+app.workSpace.h && app.workSpace.y<=mouse.y-app.deltaYMouseBlock)
+                {
+                    if(blockDistanceTest(mouse,app.blockHelper,app.block)==1 && (app.blockHelper.type==loop || app.blockHelper.type==normal || app.blockHelper.type==loopInfinity))
                     {
-                        if(blockDistanceTest(mouse,app.blockHelper,app.block)==1 && (app.blockHelper.type==loop || app.blockHelper.type==normal))
-                        {
-                            app.blockHelper.rect.x=app.block[app.block.size()-1].rect.x;
-                            app.blockHelper.rect.y=app.block[app.block.size()-1].rect.y+app.block[app.block.size()-1].rect.h-6;
-                            if (app.blockHelper.rectText1.w != 0) {
-                                app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
-                                app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
-                            }
-                            if (app.blockHelper.rectText2.w != 0) {
-                                app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
-                                app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
-                            }
-                            if(app.block[app.block.size()-1].type!=loopInfinity)
-                               app.block.push_back(app.blockHelper);
-                         //   app.allblock.push_back(app.blockHelper);
+                        app.blockHelper.rect.x=app.block[app.block.size()-1].rect.x;
+                        app.blockHelper.rect.y=app.block[app.block.size()-1].rect.y+app.block[app.block.size()-1].rect.h-6;
+                        if (app.blockHelper.rectText1.w != 0) {
+                            app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                            app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
                         }
-                        else if(blockDistanceTest(mouse,app.blockHelper,app.block)==2 && app.block[app.block.size()-1].type==loop && app.blockHelper.type==normal)
-                        {
-                            if(app.block[app.block.size()-1].child.empty())
-                            {
-                                app.blockHelper.rect.x=app.block[app.block.size()-1].rect.x+11;
-                                app.blockHelper.rect.y=app.block[app.block.size()-1].rect.y+33;
-                                if (app.blockHelper.rectText1.w != 0) {
-                                    app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
-                                    app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
-                                }
-                                if (app.blockHelper.rectText2.w != 0) {
-                                    app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
-                                    app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
-                                }
-
-                                app.childHelper.rect=app.blockHelper.rect;
-                                app.childHelper.rectText1=app.blockHelper.rectText1;
-                                app.childHelper.rectText2=app.blockHelper.rectText2;
-                                app.childHelper.p1=app.blockHelper.p1;
-                                app.childHelper.p2=app.blockHelper.p2;
-                                app.childHelper.ID=app.blockHelper.ID;
-                                app.childHelper.indexParents=app.block[app.block.size()-1].index;
-                                app.childHelper.index=0;
-
-                                app.block[app.block.size()-1].rect.h=87;
-
-                                app.block[app.block.size()-1].child.push_back(app.childHelper);
-                           //     app.allblock[ app.allblock.size()-1].child.push_back(app.childHelper);
-                              //  app.allblock.push_back(app.blockHelper);
-                            }
-                            else
-                            {
-                                app.blockHelper.rect.x=app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.x;
-                                app.blockHelper.rect.y=app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.y+app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.h-6;
-                                if (app.blockHelper.rectText1.w != 0) {
-                                    app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
-                                    app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
-                                }
-                                if (app.blockHelper.rectText2.w != 0) {
-                                    app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
-                                    app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
-                                }
-
-                                app.childHelper.rect=app.blockHelper.rect;
-                                app.childHelper.rectText1=app.blockHelper.rectText1;
-                                app.childHelper.rectText2=app.blockHelper.rectText2;
-                                app.childHelper.p1=app.blockHelper.p1;
-                                app.childHelper.p2=app.blockHelper.p2;
-                                app.childHelper.ID=app.blockHelper.ID;
-                                app.childHelper.indexParents=app.block[app.block.size()-1].index;
-                                app.childHelper.index=app.block[app.block.size()-1].child.size();
-
-                                app.block[app.block.size()-1].rect.h+=app.blockHelper.rect.h;
-
-                                app.block[app.block.size()-1].child.push_back(app.childHelper);
-                            //   app.allblock[app.allblock.size()-1-app.block[app.block.size()-1].child.size()].child.push_back(app.childHelper);
-                             //   app.allblock.push_back(app.blockHelper);
-                            }
+                        if (app.blockHelper.rectText2.w != 0) {
+                            app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                            app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
                         }
+                        if(app.block[app.block.size()-1].type!=loopInfinity)
+                            app.block.push_back(app.blockHelper);
                         else
                         {
                             app.blockHelper.rect.x=mouse.x-app.deltaXMouseBlock;
@@ -1351,23 +1398,108 @@ void RenderCodeTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab
                                 app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
                             }
                             app.allblock.push_back(app.blockHelper);
-                            if(app.block.empty())
-                            {
-                                app.block.push_back(app.blockHelper);
+                        }
+                        //   app.allblock.push_back(app.blockHelper);
+                    }
+                    else if(blockDistanceTest(mouse,app.blockHelper,app.block)==2 && app.block[app.block.size()-1].type==loop && app.blockHelper.type==normal)
+                    {
+                        if(app.block[app.block.size()-1].child.empty())
+                        {
+                            app.blockHelper.rect.x=app.block[app.block.size()-1].rect.x+11;
+                            app.blockHelper.rect.y=app.block[app.block.size()-1].rect.y+33;
+                            if (app.blockHelper.rectText1.w != 0) {
+                                app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                                app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
+                            }
+                            if (app.blockHelper.rectText2.w != 0) {
+                                app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                                app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
                             }
 
+                            app.childHelper.rect=app.blockHelper.rect;
+                            app.childHelper.rectText1=app.blockHelper.rectText1;
+                            app.childHelper.rectText2=app.blockHelper.rectText2;
+                            app.childHelper.p1=app.blockHelper.p1;
+                            app.childHelper.p2=app.blockHelper.p2;
+                            app.childHelper.ID=app.blockHelper.ID;
+                            app.childHelper.indexParents=app.block[app.block.size()-1].index;
+                            app.childHelper.index=0;
+
+                            app.block[app.block.size()-1].rect.h=87;
+
+                            app.block[app.block.size()-1].child.push_back(app.childHelper);
+                            //     app.allblock[ app.allblock.size()-1].child.push_back(app.childHelper);
+                            //  app.allblock.push_back(app.blockHelper);
                         }
-                        app.pressedBlock=false;
-                        DrawBlock(app,app.blockHelper);
+                        else
+                        {
+                            app.blockHelper.rect.x=app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.x;
+                            app.blockHelper.rect.y=app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.y+app.block[app.block.size()-1].child[app.block[app.block.size()-1].child.size()-1].rect.h-6;
+                            if (app.blockHelper.rectText1.w != 0) {
+                                app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                                app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
+                            }
+                            if (app.blockHelper.rectText2.w != 0) {
+                                app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                                app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
+                            }
+
+                            app.childHelper.rect=app.blockHelper.rect;
+                            app.childHelper.rectText1=app.blockHelper.rectText1;
+                            app.childHelper.rectText2=app.blockHelper.rectText2;
+                            app.childHelper.p1=app.blockHelper.p1;
+                            app.childHelper.p2=app.blockHelper.p2;
+                            app.childHelper.ID=app.blockHelper.ID;
+                            app.childHelper.indexParents=app.block[app.block.size()-1].index;
+                            app.childHelper.index=app.block[app.block.size()-1].child.size();
+
+                            app.block[app.block.size()-1].rect.h+=app.blockHelper.rect.h;
+
+                            app.block[app.block.size()-1].child.push_back(app.childHelper);
+                            //   app.allblock[app.allblock.size()-1-app.block[app.block.size()-1].child.size()].child.push_back(app.childHelper);
+                            //   app.allblock.push_back(app.blockHelper);
+                        }
                     }
+                    else
+                    {
+                        app.blockHelper.rect.x=mouse.x-app.deltaXMouseBlock;
+                        app.blockHelper.rect.y=mouse.y-app.deltaYMouseBlock;
+                        if (app.blockHelper.rectText1.w != 0) {
+                            app.blockHelper.rectText1.x = app.blockHelper.rect.x + app.offsetX1;
+                            app.blockHelper.rectText1.y = app.blockHelper.rect.y + app.offsetY1;
+                        }
+                        if (app.blockHelper.rectText2.w != 0) {
+                            app.blockHelper.rectText2.x = app.blockHelper.rect.x + app.offsetX2;
+                            app.blockHelper.rectText2.y = app.blockHelper.rect.y + app.offsetY2;
+                        }
+                        app.allblock.push_back(app.blockHelper);
+                        if(app.block.empty())
+                        {
+                            app.block.push_back(app.blockHelper);
+                        }
+
+                    }
+                    app.pressedBlock=false;
+                    DrawBlock(app,app.blockHelper);
+                }
+            }
+        }
+        if(it.ID==Extension)
+        {
+            if(it.leftClick)
+            {
+                SDL_RenderClear(app.renderer);
+                for(auto &it2:tab)
+                {
+                    it2.active=false;
+                    if(it2.ID==TAB_EXTENSION)
+                        it2.active=true;
+
+                }
             }
         }
 
     }
-
-
-
-
 
 }
 void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &tex)
@@ -1406,7 +1538,6 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
     {
         if(Motion<=it.ID && it.ID<=MyBlocks)
         {
-
             if(app.activeCodePage[it.ID])
             {
                 int texty=app.H*106/609;
@@ -1456,10 +1587,26 @@ void RenderTextureCodeTab(std::vector<ButtonRect> &buttons,AppState &app,ThemeCo
             aacircleRGBA(app.renderer,it.rect.w/2,it.rect.y+app.H*17/609,app.H*8.5/609,color.circleBorder[it.ID].r,color.circleBorder[it.ID].g,color.circleBorder[it.ID].b,color.circleBorder[it.ID].a);
 
         }
+        if(it.ID==Pen && app.activeExtention)
+        {
+            if(app.activeCodePage[it.ID])
+            {
+                int texty=app.H*106/609;
+                std::string textfont="Bold14";
+                text(app,app.W*70/1365,texty,"Pen",textfont,SDL_Color{87,94,117,255},true);
+            }
+            image(app,it.rect.w/2,it.rect.y+app.H*17/609,1,it.ID,true);
+        }
         if(200 <= it.ID && it.ID <= 500)
         {
             if(it.active)
                 image(app,it.rect.x,it.rect.y,1,it.ID);
+        }
+        if(it.ID==Extension)
+        {
+            SDL_SetRenderDrawColor(app.renderer,133,92,214,255);
+            SDL_RenderFillRect(app.renderer,&it.rect);
+            image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID,true);
         }
     }
 
@@ -1550,10 +1697,10 @@ void image(AppState &app,int x,int y,double scale,int id,bool xyMiddle,int readX
     }
     else
     {
-     rect.x=x;
-    rect.y=y;
-    rect.w=(double)scr.w/scale;
-    rect.h=(double)scr.h/scale;
+        rect.x=x;
+        rect.y=y;
+        rect.w=(double)scr.w/scale;
+        rect.h=(double)scr.h/scale;
     }
 
 
@@ -1645,26 +1792,26 @@ void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,Key
     if (!activeBtn)
         return;
 
-        if (e.type == SDL_TEXTINPUT)
+    if (e.type == SDL_TEXTINPUT)
+    {
+        if(activeBtn->charText)
         {
-            if(activeBtn->charText)
+            activeBtn->text += e.text.text;
+        }
+        else
+        {
+            if (isdigit(e.text.text[0]) || e.text.text[0] == '-')
             {
                 activeBtn->text += e.text.text;
             }
-            else
-            {
-                if (isdigit(e.text.text[0]) || e.text.text[0] == '-')
-                {
-                    activeBtn->text += e.text.text;
-                }
-            }
-
         }
-        if(key.keyDown[SDL_SCANCODE_BACKSPACE])
-            if (!activeBtn->text.empty())
-            {
-                activeBtn->text.pop_back();
-            }
+
+    }
+    if(key.keyDown[SDL_SCANCODE_BACKSPACE])
+        if (!activeBtn->text.empty())
+        {
+            activeBtn->text.pop_back();
+        }
     if (key.keyDown[SDL_SCANCODE_RETURN])
     {
         app.isTyping = false;
@@ -1674,7 +1821,7 @@ void TextInput(AppState &app, std::vector<AllTabButtons> &tabs, SDL_Event &e,Key
 }
 void DrawBlock(AppState &app,Block &block)
 {
- //   std::cout<<block.child.size()<<std::endl;
+    //   std::cout<<block.child.size()<<std::endl;
     if(block.type==loop && block.child.size()!=0)
     {
         image(app,block.rect.x,block.rect.y,1,block.ID,false,0,0,1,37.0/76.0);
@@ -1702,7 +1849,7 @@ void DrawBlock(AppState &app,Block &block)
     if(block.rectText1.w != 0)
     {
         if(block.ID==260 || block.ID==262)
-           text(app,block.rectText1.x+block.rectText1.w/2,block.rectText1.y+block.rectText1.h/2,block.p1,"Roman11",SDL_Color{255, 255, 255,255});
+            text(app,block.rectText1.x+block.rectText1.w/2,block.rectText1.y+block.rectText1.h/2,block.p1,"Roman11",SDL_Color{255, 255, 255,255});
         else
             text(app,block.rectText1.x+block.rectText1.w/2,block.rectText1.y+block.rectText1.h/2,block.p1,"Roman11",SDL_Color{87, 94, 117,255});
     }
@@ -1782,6 +1929,10 @@ void LoadMyTexture(AppState &app)
     app.texture[flipHorizontal]=LoadTexture(app.renderer, "icons/flipHorizontal.png");
     app.texture[flipVertical]=LoadTexture(app.renderer, "icons/flipVertical.png");
     app.texture[deleteButton]=LoadTexture(app.renderer, "icons/delete.png");
+    app.texture[Extension]=LoadTexture(app.renderer, "icons/extension.png");
+    app.texture[Pen]=LoadTexture(app.renderer, "icons/pen.png");
+    app.texture[PenPhoto]=LoadTexture(app.renderer, "icons/penPhoto.png");
+    app.texture[PenExtension]=LoadTexture(app.renderer, "icons/penExtemsion.png");
 
 }
 void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tabs)
@@ -1844,7 +1995,7 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
         if(it.ID==xImageTextInput)
         {
             if(!it.text.empty() && it.text!="-")
-               app.xImage=std::stoi(it.text);
+                app.xImage=std::stoi(it.text);
             else
                 app.xImage=0;
             if(app.xImage>app.paintSpace.w/2)
@@ -1918,7 +2069,7 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                 image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID+1000,true);
             }
             else
-            image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID,true);
+                image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,1,it.ID,true);
         }
         if(3000<=it.ID && it.ID<=3004)
         {
@@ -2028,7 +2179,7 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
             {
                 unsigned char defaultRGB[3] = {
                         app.colorPaint.r,
-                       app.colorPaint.g,
+                        app.colorPaint.g,
                         app.colorPaint.b
                 };
                 unsigned char resultRGB[3] = { 0, 0, 0 };
@@ -2049,8 +2200,8 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                 }
             }
             roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,7,app.colorPaint.r,app.colorPaint.g,app.colorPaint.b,app.colorPaint.a);
-          roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,7,0,0,0,60);
-       }
+            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,7,0,0,0,60);
+        }
         if(app.paint[eraser])
         {
             if(app.inPaintSpace)
@@ -2061,7 +2212,7 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                 if(mouse.leftPressed)
                 {
                     int eraseSizeX=30,eraseSizeY=30;
-                   SDL_Rect eras={mouse.x-app.xPaint-eraseSizeX/2,mouse.y-app.yPaint-eraseSizeY/2,eraseSizeX,eraseSizeY};
+                    SDL_Rect eras={mouse.x-app.xPaint-eraseSizeX/2,mouse.y-app.yPaint-eraseSizeY/2,eraseSizeX,eraseSizeY};
 
                     SDL_SetRenderTarget(app.renderer,app.boxhelper.t);
                     SDL_SetRenderDrawBlendMode(app.renderer, SDL_BLENDMODE_NONE);
@@ -2157,8 +2308,8 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                                 aacircleRGBA(app.renderer,mouse.xLeftDown,mouse.yLeftDown,sqrt((mouse.x-mouse.xLeftDown)*(mouse.x-mouse.xLeftDown)+(mouse.y-mouse.yLeftDown)*(mouse.y-mouse.yLeftDown))+1,app.colorPaint.r,app.colorPaint.g,app.colorPaint.b,app.colorPaint.a);
                                 aacircleRGBA(app.renderer,mouse.xLeftDown,mouse.yLeftDown,sqrt((mouse.x-mouse.xLeftDown)*(mouse.x-mouse.xLeftDown)+(mouse.y-mouse.yLeftDown)*(mouse.y-mouse.yLeftDown))-1,app.colorPaint.r,app.colorPaint.g,app.colorPaint.b,app.colorPaint.a);
                             }
-                      break;
-                   }
+                        break;
+                    }
             }
             if(app.isShaping && app.inPaintSpace && mouse.leftUp)
             {
@@ -2310,7 +2461,7 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
                     SDL_RenderCopy(app.renderer, it.texture, NULL, &dst);
                 }
                 SDL_RenderSetClipRect(app.renderer, NULL);
-                }
+            }
             if(!app.Confrim)
             {
                 text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,"Upload Image","Bold12",SDL_Color{87, 94, 117,255});
@@ -2374,71 +2525,71 @@ void textureRenderer(AppState &app,std::vector<AllTabButtons> &tabs,float x,floa
 }
 void SaveProject(AppState &app)
 {
-        const char* filters[] = {"*.scrp","*.json"};
-        const char* path = tinyfd_saveFileDialog(
-                "Save Project",
-                "project.scrp",
-                2,
-                filters,            // فیلترها
-                "Scratch Project"   // توضیح فیلتر
-        );
-        if(!path)
-            return;
+    const char* filters[] = {"*.scrp","*.json"};
+    const char* path = tinyfd_saveFileDialog(
+            "Save Project",
+            "project.scrp",
+            2,
+            filters,            // فیلترها
+            "Scratch Project"   // توضیح فیلتر
+    );
+    if(!path)
+        return;
 
-        json j;
+    json j;
 
-        j["block"] = json::array();
-        for (auto &it:app.block) {
-            json a;
-            a["index"] = it.index;
-            a["ID"] = it.ID;
-            a["type"] = it.type;
-            a["rect"]["x"] = it.rect.x;
-            a["rect"]["y"] = it.rect.y;
-            a["rect"]["w"] = it.rect.w;
-            a["rect"]["h"] = it.rect.h;
-            a["rectText1"]["x"] = it.rectText1.x;
-            a["rectText1"]["y"] = it.rectText1.y;
-            a["rectText1"]["w"] = it.rectText1.w;
-            a["rectText1"]["h"] = it.rectText1.h;
-            a["rectText2"]["x"] = it.rectText2.x;
-            a["rectText2"]["y"] = it.rectText2.y;
-            a["rectText2"]["w"] = it.rectText2.w;
-            a["rectText2"]["h"] = it.rectText2.h;
-            a["p1"]=it.p1;
-            a["p2"]=it.p2;
-            if (!it.child.empty()) {
-                a["child"] = json::array();
-                for (auto &it2: it.child) {
-                    json b;
+    j["block"] = json::array();
+    for (auto &it:app.block) {
+        json a;
+        a["index"] = it.index;
+        a["ID"] = it.ID;
+        a["type"] = it.type;
+        a["rect"]["x"] = it.rect.x;
+        a["rect"]["y"] = it.rect.y;
+        a["rect"]["w"] = it.rect.w;
+        a["rect"]["h"] = it.rect.h;
+        a["rectText1"]["x"] = it.rectText1.x;
+        a["rectText1"]["y"] = it.rectText1.y;
+        a["rectText1"]["w"] = it.rectText1.w;
+        a["rectText1"]["h"] = it.rectText1.h;
+        a["rectText2"]["x"] = it.rectText2.x;
+        a["rectText2"]["y"] = it.rectText2.y;
+        a["rectText2"]["w"] = it.rectText2.w;
+        a["rectText2"]["h"] = it.rectText2.h;
+        a["p1"]=it.p1;
+        a["p2"]=it.p2;
+        if (!it.child.empty()) {
+            a["child"] = json::array();
+            for (auto &it2: it.child) {
+                json b;
 
-                    b["index"] = it2.index;
-                    b["ID"] = it2.ID;
-                    b["type"] = it2.type;
-                    b["indexParents"] = it2.indexParents;
-                    b["rect"]["x"] = it2.rect.x;
-                    b["rect"]["y"] = it2.rect.y;
-                    b["rect"]["w"] = it2.rect.w;
-                    b["rect"]["h"] = it2.rect.h;
-                    b["rectText1"]["x"] = it2.rectText1.x;
-                    b["rectText1"]["y"] = it2.rectText1.y;
-                    b["rectText1"]["w"] = it2.rectText1.w;
-                    b["rectText1"]["h"] = it2.rectText1.h;
-                    b["rectText2"]["x"] = it2.rectText2.x;
-                    b["rectText2"]["y"] = it2.rectText2.y;
-                    b["rectText2"]["w"] = it2.rectText2.w;
-                    b["rectText2"]["h"] = it2.rectText2.h;
-                    b["p1"]=it2.p1;
-                    b["p2"]=it2.p2;
+                b["index"] = it2.index;
+                b["ID"] = it2.ID;
+                b["type"] = it2.type;
+                b["indexParents"] = it2.indexParents;
+                b["rect"]["x"] = it2.rect.x;
+                b["rect"]["y"] = it2.rect.y;
+                b["rect"]["w"] = it2.rect.w;
+                b["rect"]["h"] = it2.rect.h;
+                b["rectText1"]["x"] = it2.rectText1.x;
+                b["rectText1"]["y"] = it2.rectText1.y;
+                b["rectText1"]["w"] = it2.rectText1.w;
+                b["rectText1"]["h"] = it2.rectText1.h;
+                b["rectText2"]["x"] = it2.rectText2.x;
+                b["rectText2"]["y"] = it2.rectText2.y;
+                b["rectText2"]["w"] = it2.rectText2.w;
+                b["rectText2"]["h"] = it2.rectText2.h;
+                b["p1"]=it2.p1;
+                b["p2"]=it2.p2;
 
-                    a["child"].push_back(b);
-                }
+                a["child"].push_back(b);
             }
-            j["block"].push_back(a);
         }
+        j["block"].push_back(a);
+    }
 
-        j["allBlock"] = json::array();
-        for (auto &it:app.allblock) {
+    j["allBlock"] = json::array();
+    for (auto &it:app.allblock) {
         json a;
         a["index"] = it.index;
         a["ID"] = it.ID;
@@ -2487,28 +2638,28 @@ void SaveProject(AppState &app)
         j["allBlock"].push_back(a);
     }
 
-       j["box"]["x"] = app.box.x;
-       j["box"]["y"] = app.box.y;
-       j["box"]["w"] = app.box.w;
-       j["box"]["h"] = app.box.h;
-       j["box"]["angle"] = app.box.angle;
-       j["box"]["stop"] = app.box.stop;
-       j["box"]["scale"] = app.box.scale;
-       int w,h;
-       SDL_QueryTexture(app.box.t, NULL, NULL, &w, &h);
-       j["box"]["textureW"]=w;
-       j["box"]["textureH"]=h;
-       j["box"]["texture"] =textureToBase64(app.renderer,app.box.t);
+    j["box"]["x"] = app.box.x;
+    j["box"]["y"] = app.box.y;
+    j["box"]["w"] = app.box.w;
+    j["box"]["h"] = app.box.h;
+    j["box"]["angle"] = app.box.angle;
+    j["box"]["stop"] = app.box.stop;
+    j["box"]["scale"] = app.box.scale;
+    int w,h;
+    SDL_QueryTexture(app.box.t, NULL, NULL, &w, &h);
+    j["box"]["textureW"]=w;
+    j["box"]["textureH"]=h;
+    j["box"]["texture"] =textureToBase64(app.renderer,app.box.t);
 
 
-        std::string jsonStr = j.dump(4);
+    std::string jsonStr = j.dump(4);
 
-        std::ofstream file(path, std::ios::binary);
-        if (file.is_open())
-        {
-            file.write(jsonStr.c_str(), jsonStr.size());
-            file.close();
-        }
+    std::ofstream file(path, std::ios::binary);
+    if (file.is_open())
+    {
+        file.write(jsonStr.c_str(), jsonStr.size());
+        file.close();
+    }
 
 }
 std::string textureToBase64(SDL_Renderer* renderer, SDL_Texture* texture) {
@@ -2605,11 +2756,6 @@ void LoadProject(AppState& app)
     std::ifstream file(filePath);
     if (!file.is_open())
     {
-        printf("Error: cannot open file %s\n", filePath);
-        return;
-    }
-    else
-    {
         SDL_MessageBoxButtonData buttons[] = {
                 {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "OK"}
         };
@@ -2628,6 +2774,7 @@ void LoadProject(AppState& app)
             return;
     }
 
+
     json j;
     file >> j;
     file.close();
@@ -2641,7 +2788,7 @@ void LoadProject(AppState& app)
         app.box.t = nullptr;
     }
 
-    if(!j.contains("block") && !(j.contains("allBlock")) && !(j.contains("boc")))
+    if(!j.contains("block") && !(j.contains("allBlock")) && !(j.contains("box")))
     {
         SDL_MessageBoxButtonData buttons[] = {
                 {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "OK"}
@@ -2756,7 +2903,7 @@ void LoadProject(AppState& app)
             app.allblock.push_back(a);
         }
     }
-    if(j.contains("boc"))
+    if(j.contains("box"))
     {
         app.box.x=j["box"]["x"];
         app.box.y=j["box"]["y"];
@@ -2776,7 +2923,155 @@ void LoadProject(AppState& app)
 
 
 }
+void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture)
+{
+    SDL_SetRenderDrawColor(app.renderer,233,241,252,255);
+    SDL_RenderClear(app.renderer);
 
+
+    for(auto &it:buttons)
+    {
+        if(it.ID==BackExtension)
+        {
+            SDL_Rect rect={0,0,app.W,it.rect.h};
+            SDL_SetRenderDrawColor(app.renderer,133,92,214,255);
+            SDL_RenderFillRect(app.renderer,&rect);
+            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2,"Back","Medium16",SDL_Color{255,255,255,255});
+            text(app,app.W/2,it.rect.y+it.rect.h/2,"Choose an Extension","Roman21",SDL_Color{255,255,255,255});
+            if(it.leftClick)
+            {
+                for(auto &it2:tabs)
+                {
+                    if(it2.ID==TAB_GENERAL)
+                        it2.active=true;
+                    if(it2.ID==TAB_CODE)
+                        it2.active=true;
+                    if(it2.ID==TAB_EXTENSION)
+                        it2.active= false;
+                }
+            }
+            app.isOnBlock=false;
+            if(it.onButton)
+            {
+                app.isOnBlock=true;
+            }
+        }
+        if(it.ID==CLOSE_BUTTONExtension)
+        {
+            if(it.onButton)
+            {
+                SDL_SetRenderDrawColor(app.renderer,232,17,35,255);
+                SDL_RenderFillRect(app.renderer,&it.rect);
+            }
+            if(it.leftClick)
+            {
+                const SDL_MessageBoxButtonData buttons[] = {
+
+                        { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
+                        { SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Yes" }
+                };
+
+                const SDL_MessageBoxData messageboxdata = {
+                        SDL_MESSAGEBOX_INFORMATION,
+                        app.window,
+                        "Exit Program",
+                        "Are you sure you want to exit? Any unsaved changes will be lost.",
+                        SDL_arraysize(buttons),
+                        buttons,
+                        NULL
+                };
+
+                int buttonid;
+                if (SDL_ShowMessageBox(&messageboxdata, &buttonid) == 0)
+                {
+                    if (buttonid == 1)
+                    {
+                        app.endProgram = true;
+                    }
+                }
+            }
+            int L=6;
+            aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),214,214,214,255);
+            aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),214,214,214,255);
+            aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,214,214,214,255);
+            aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2))-1,(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2))-1,214,214,214,255);
+        }
+        if(it.ID==WINDOW_BUTTONExtension)
+        {
+            if(it.active)
+            {
+                if(it.onButton)
+                {
+                    SDL_SetRenderDrawColor(app.renderer,122, 86, 199, 255);
+                    SDL_RenderFillRect(app.renderer,&it.rect);
+                }
+                SDL_SetRenderDrawColor(app.renderer,214,214,214,255);
+                SDL_Rect rectWindow={it.rect.x+it.rect.w/2-it.rect.w/10,it.rect.y+it.rect.h/2-it.rect.w/10,it.rect.w*2/10,it.rect.w*2/10};
+                SDL_RenderDrawRect(app.renderer,&rectWindow);
+            }
+        }
+        if(it.ID==MINIMIZED_BUTTONExtension)
+        {
+            if(it.active)
+            {
+                if(it.onButton)
+                {
+                    SDL_SetRenderDrawColor(app.renderer,122, 86, 199, 255);
+                    SDL_RenderFillRect(app.renderer,&it.rect);
+                }
+                int s=6;
+                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-s,it.rect.y+it.rect.h/2,it.rect.x+it.rect.w/2+s,it.rect.y+it.rect.h/2,214,214,214,255);
+                if(it.leftClick )
+                {
+                    SDL_MinimizeWindow(app.window);
+                    it.onButton=false;
+                }
+            }
+        }
+        if(it.ID==PenExtension)
+        {
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
+            image(app,it.rect.x,it.rect.y,1,PenPhoto);
+            inverseRoundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,233,241,252,255);
+            roundedBoxRGBA(app.renderer,it.rect.x+16,it.rect.y+147,it.rect.x+20+52,it.rect.y+151+52,5,255,255,255,255);
+            roundedBoxRGBA(app.renderer,it.rect.x+20,it.rect.y+151,it.rect.x+20+48,it.rect.y+151+48,5,15,189,140,255);
+            image(app,it.rect.x+20+24,it.rect.y+151+24,1,PenExtension,true);
+            if(!it.onButton)
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,217,217,217,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
+            }
+            else
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+            }
+            text(app,it.rect.x+20,it.rect.y+it.rect.h*184/245,"Pen","Bold19",SDL_Color{86,89,111,255}, true);
+            text(app,it.rect.x+20,it.rect.y+it.rect.h*208/245,"Draw with your sprites.","Roman19",SDL_Color{86,89,111,255}, true);
+            if(it.leftClick)
+            {
+                app.activeExtention=true;
+                for(auto &it2:tabs)
+                {
+                    if(it2.ID==TAB_GENERAL)
+                        it2.active=true;
+                    if(it2.ID==TAB_CODE)
+                    {
+                        it2.active=true;
+                        RenderTextureCodeTab(it2.buttons, app, color, texture);
+                    }
+                    if(it2.ID==TAB_EXTENSION)
+                        it2.active=false;
+                }
+            }
+        }
+    }
+
+
+
+}
 
 
 
@@ -2897,157 +3192,157 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 
     }
 
-        for(auto &it:buttons)
+    for(auto &it:buttons)
+    {
+        if( app.fileMenu)
         {
-            if( app.fileMenu)
+            if(it.ID==fileMenu)
             {
-                if(it.ID==fileMenu)
+                SDL_RenderSetClipRect(app.renderer, &it.rect);
+                roundedBoxRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBar.r,color.topBar.g,color.topBar.b,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
+                SDL_RenderSetClipRect(app.renderer, NULL);
+                aalineRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
+                if(mouse.leftDown && !it.onButton)
+                    app.fileMenu=false;
+            }
+            if(it.ID==fileNew)
+            {
+                if(it.onButton)
                 {
-                    SDL_RenderSetClipRect(app.renderer, &it.rect);
-                    roundedBoxRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBar.r,color.topBar.g,color.topBar.b,255);
-                    roundedRectangleRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
-                    SDL_RenderSetClipRect(app.renderer, NULL);
-                    aalineRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
-                    if(mouse.leftDown && !it.onButton)
-                        app.fileMenu=false;
+                    SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
+                    SDL_RenderFillRect(app.renderer,&it.rect);
                 }
-                if(it.ID==fileNew)
-                {
-                    if(it.onButton)
+                text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"New Project","Bold13",color.white,true);
+                if(it.leftClick) {
+                    SDL_MessageBoxButtonData buttons[] = {
+                            {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel"},
+                            {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Don't Save"},
+                            {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 2, "Save"}
+                    };
+                    SDL_MessageBoxData msgBox = {
+                            SDL_MESSAGEBOX_WARNING,
+                            app.window,
+                            "New Project",
+                            "Do you want to save the current project?",
+                            3,
+                            buttons,
+                            NULL
+                    };
+                    int buttonId = -1;
+                    SDL_ShowMessageBox(&msgBox, &buttonId);
+                    if (buttonId == 1)
                     {
-                        SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
-                        SDL_RenderFillRect(app.renderer,&it.rect);
-                    }
-                    text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"New Project","Bold13",color.white,true);
-                    if(it.leftClick) {
-                        SDL_MessageBoxButtonData buttons[] = {
-                                {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel"},
-                                {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Don't Save"},
-                                {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 2, "Save"}
-                        };
-                        SDL_MessageBoxData msgBox = {
-                                SDL_MESSAGEBOX_WARNING,
-                                app.window,
-                                "New Project",
-                                "Do you want to save the current project?",
-                                3,
-                                buttons,
-                                NULL
-                        };
-                        int buttonId = -1;
-                        SDL_ShowMessageBox(&msgBox, &buttonId);
-                        if (buttonId == 1)
+                        app.block.clear();
+                        app.allblock.clear();
+                        app.box.x=0;
+                        app.box.y=0;
+                        app.box.scale=1;
+                        app.box.angle=90;
+                        for(auto &it1:tabs)
                         {
-                         app.block.clear();
-                         app.allblock.clear();
-                         app.box.x=0;
-                         app.box.y=0;
-                         app.box.scale=1;
-                         app.box.angle=90;
-                            for(auto &it1:tabs)
+                            if(it1.ID==TAB_COSTUMES)
                             {
-                                if(it1.ID==TAB_COSTUMES)
+                                for(auto &it2:it1.buttons)
                                 {
-                                    for(auto &it2:it1.buttons)
+                                    if(it2.ID==showSpace)
                                     {
-                                        if(it2.ID==showSpace)
-                                        {
-                                            SDL_SetRenderTarget(app.renderer,app.box.t);
-                                            SDL_SetRenderDrawColor(app.renderer,0,0,0,0);
-                                            SDL_RenderClear(app.renderer);
-                                            image(app,it2.rect.w/2,it2.rect.h/2, 1, gorbaStandard, true);
-                                            SDL_SetRenderTarget(app.renderer,NULL);
-                                        }
-                                        if(it2.ID==nameCostumeTextInput)
-                                        {
-                                            it2.text="costume1";
-                                        }
-                                        if(it2.ID==xImageTextInput)
-                                        {
-                                            it2.text="0";
-                                        }
-                                        if(it2.ID==yImageTextInput)
-                                        {
-                                            it2.text="0";
-                                        }
-                                        if(it2.ID==sizeImageTextInput)
-                                        {
-                                            it2.text="100";
-                                        }
+                                        SDL_SetRenderTarget(app.renderer,app.box.t);
+                                        SDL_SetRenderDrawColor(app.renderer,0,0,0,0);
+                                        SDL_RenderClear(app.renderer);
+                                        image(app,it2.rect.w/2,it2.rect.h/2, 1, gorbaStandard, true);
+                                        SDL_SetRenderTarget(app.renderer,NULL);
                                     }
-
+                                    if(it2.ID==nameCostumeTextInput)
+                                    {
+                                        it2.text="costume1";
+                                    }
+                                    if(it2.ID==xImageTextInput)
+                                    {
+                                        it2.text="0";
+                                    }
+                                    if(it2.ID==yImageTextInput)
+                                    {
+                                        it2.text="0";
+                                    }
+                                    if(it2.ID==sizeImageTextInput)
+                                    {
+                                        it2.text="100";
+                                    }
                                 }
+
                             }
                         }
-                        if(buttonId==2)
-                        {
-                            SaveProject(app);
-                        }
-
                     }
-
-
-                }
-                if(it.ID==fileSave)
-                {
-                    if(it.onButton)
-                    {
-                        SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
-                        SDL_RenderFillRect(app.renderer,&it.rect);
-                    }
-                    if(it.leftClick)
+                    if(buttonId==2)
                     {
                         SaveProject(app);
                     }
-                    text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"Save Project","Bold13",color.white,true);
-                }
-                if(it.ID==fileLoad)
-                {
-                    if(it.onButton)
-                    {
 
-                        SDL_RenderSetClipRect(app.renderer, &it.rect);
-                        roundedBoxRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
-                        SDL_RenderSetClipRect(app.renderer, NULL);
-
-                    }
-                    if(it.leftClick)
-                    {
-                        SDL_MessageBoxButtonData buttons[] = {
-                                {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel"},
-                                {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Don't Save"},
-                                {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 2, "Save"}
-                        };
-                        SDL_MessageBoxData msgBox = {
-                                SDL_MESSAGEBOX_WARNING,
-                                app.window,
-                                "Load Project",
-                                "Do you want to save the current project?",
-                                3,
-                                buttons,
-                                NULL
-                        };
-                        int buttonId = -1;
-                        SDL_ShowMessageBox(&msgBox, &buttonId);
-                        if(buttonId==2)
-                        {
-                            SaveProject(app);
-                        }
-                        if(buttonId==1)
-                        {
-                            LoadProject(app);
-                        }
-                    }
-                    text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"Load Project","Bold13",color.white,true);
                 }
+
 
             }
-            if(it.ID==FILE_BUTTON && it.leftClick)
+            if(it.ID==fileSave)
             {
-                if(!app.fileMenu)
-                    app.fileMenu=true;
+                if(it.onButton)
+                {
+                    SDL_SetRenderDrawColor(app.renderer,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
+                    SDL_RenderFillRect(app.renderer,&it.rect);
+                }
+                if(it.leftClick)
+                {
+                    SaveProject(app);
+                }
+                text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"Save Project","Bold13",color.white,true);
             }
+            if(it.ID==fileLoad)
+            {
+                if(it.onButton)
+                {
+
+                    SDL_RenderSetClipRect(app.renderer, &it.rect);
+                    roundedBoxRGBA(app.renderer,it.rect.x,0,it.rect.x+it.rect.w,it.rect.y+it.rect.h,9,color.topBarhaber.r, color.topBarhaber.g, color.topBarhaber.b,255);
+                    SDL_RenderSetClipRect(app.renderer, NULL);
+
+                }
+                if(it.leftClick)
+                {
+                    SDL_MessageBoxButtonData buttons[] = {
+                            {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "Cancel"},
+                            {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Don't Save"},
+                            {SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 2, "Save"}
+                    };
+                    SDL_MessageBoxData msgBox = {
+                            SDL_MESSAGEBOX_WARNING,
+                            app.window,
+                            "Load Project",
+                            "Do you want to save the current project?",
+                            3,
+                            buttons,
+                            NULL
+                    };
+                    int buttonId = -1;
+                    SDL_ShowMessageBox(&msgBox, &buttonId);
+                    if(buttonId==2)
+                    {
+                        SaveProject(app);
+                    }
+                    if(buttonId==1)
+                    {
+                        LoadProject(app);
+                    }
+                }
+                text(app,it.rect.x+it.rect.w*1/15,it.rect.y+it.rect.h*3/8,"Load Project","Bold13",color.white,true);
+            }
+
         }
+        if(it.ID==FILE_BUTTON && it.leftClick)
+        {
+            if(!app.fileMenu)
+                app.fileMenu=true;
+        }
+    }
 
 
 }
@@ -3125,8 +3420,8 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
     SDL_RenderFillRect(app.renderer,&topBar);
     //صفحه استیج
     SDL_SetRenderDrawColor(app.renderer,255,255,255,255);
-    roundedBoxRGBA(app.renderer,app.W*950/1503,app.H*90/609,app.W*1496/1503,app.H*366/609,15*app.W/1365,255,255,255,255);
-    roundedRectangleRGBA(app.renderer,app.W*950/1503,app.H*90/609,app.W*1496/1503,app.H*366/609,15*app.W/1365,185,193,206,255);
+    roundedBoxRGBA(app.renderer,app.stageRect.x,app.stageRect.y,app.stageRect.x+app.stageRect.w,app.stageRect.h+app.stageRect.y,15*app.W/1365,255,255,255,255);
+    roundedRectangleRGBA(app.renderer,app.stageRect.x,app.stageRect.y,app.stageRect.x+app.stageRect.w,app.stageRect.h+app.stageRect.y,15*app.W/1365,185,193,206,255);
 
 
     // ایکون ها
@@ -3188,20 +3483,20 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             SDL_Rect code = {it.rect.x+it.rect.w*3/10-11, it.rect.y+it.rect.h/2-11, 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.code, nullptr, &code);
             text(app,it.rect.x+it.rect.w*6/10, it.rect.y+it.rect.h/2 , u, "Medium12", {123, 131, 152, 255});
-         if(it.leftClick&& !app.fileMenu)
-         {
-             for(auto &it:tabs)
-             {
-                 if(it.ID==TAB_CODE)
-                 {
-                     it.active=true;
-                 }
-                 else if(it.ID!=TAB_GENERAL)
-                 {
-                     it.active=false;
-                 }
-             }
-         }
+            if(it.leftClick&& !app.fileMenu)
+            {
+                for(auto &it:tabs)
+                {
+                    if(it.ID==TAB_CODE)
+                    {
+                        it.active=true;
+                    }
+                    else if(it.ID!=TAB_GENERAL)
+                    {
+                        it.active=false;
+                    }
+                }
+            }
 
         }
         else if (it.ID == COSTUMES_BUTTON) {
@@ -3211,16 +3506,6 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
                            227, 242, 255);
             if (it.onButton) {
                 roundedBoxRGBA(app.renderer,  + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
-                               230, 240, 255, 255);
-
-        }
-        else if (it.ID == COSTUMES_BUTTON) {
-            roundedRectangleRGBA(app.renderer, 95 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
-                                 209, 255);
-            roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
-                           227, 242, 255);
-            if (it.onButton) {
-                roundedBoxRGBA(app.renderer, 1 + 95 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,
                                230, 240, 255, 255);
 
             }
@@ -3252,41 +3537,12 @@ void RenderTextureGeneral(std::vector<ButtonRect> buttons,AppState &app,ThemeGen
             if (it.onButton) {
                 roundedBoxRGBA(app.renderer, 1 + it.rect.x, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10,230, 240, 255, 255);
 
-        }
-        else if (it.ID == SOUNDS_BUTTON) {
-            roundedRectangleRGBA(app.renderer, 215 * app.W / 1503, it.rect.y, it.rect.w+it.rect.x, it.rect.y + 60, 10, 185, 193,
-                                 209, 255);
-            roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1+it.rect.x, it.rect.y + 60, 10, 217,
-                           227, 242, 255);
-            if (it.onButton) {
-                roundedBoxRGBA(app.renderer, 1 + 215 * app.W / 1503, it.rect.y + 1, it.rect.w - 1, it.rect.y + 60, 10,
-                               230, 240, 255, 255);
-
             }
             std::string u = "Sound";
             SDL_Rect sound = {it.rect.x+it.rect.w*5/20-11, it.rect.y+it.rect.h/2-12, 22, 22};
             SDL_RenderCopy(app.renderer, buttonTextures.sounds, nullptr, &sound);
             text(app,it.rect.x+it.rect.w*6/10, it.rect.y+it.rect.h/2 , u, "Medium12", {123, 131, 152, 255});
 
-        } else if (it.ID == GO_BUTTON) {
-            if (it.onButton) {
-                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
-            }
-            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
-            SDL_RenderCopy(app.renderer, buttonTextures.Go, nullptr,&u );
-        }
-        else if (it.ID == STOP_BUTTON){
-            if (it.onButton) {
-                roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 216, 218, 249, 255);
-            }
-            SDL_Rect u={it.rect.x+3,it.rect.y+3,28,28};
-            SDL_RenderCopy(app.renderer, buttonTextures.Stop, nullptr,&u ); }
-        else if (it.ID == FULLSCREEN_BUTTON) {
-            roundedBoxRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3, 255, 255, 255, 255);
-            roundedRectangleRGBA(app.renderer, it.rect.x, it.rect.y, it.rect.w+it.rect.x, it.rect.h+it.rect.y, 3,185,193,206,255);
-            SDL_Rect u={it.rect.x+4,it.rect.y+4,it.rect.w-8,it.rect.h-8};
-            SDL_RenderCopy(app.renderer, buttonTextures.Fullscreen, nullptr,&u );
-        }
 
             if(it.leftClick && !app.fileMenu)
             {
@@ -3345,51 +3601,227 @@ void UpdateSprite (Sprite& s){
 
 }
 void RenderStage(AppState & app, Box &box)
-{  SDL_Rect stagerect;
-    stagerect.x = app.W*950/1503;
-    stagerect.y = app.H*90/609;
-    stagerect.w = app.W*546/1503;
-    stagerect.h = app.H*276/609;
-    SDL_RenderSetClipRect(app.renderer, &stagerect);
+{
+    SDL_RenderSetClipRect(app.renderer, &app.stageRect);
 
-    int X=-box.w/2+app.W*1223/1503+box.x;
-    int Y=-box.h/2+app.H*228/609-box.y;
+    int X=-box.w/2+app.stageRect.x+app.stageRect.w/2+box.x;
+    int Y=-box.h/2+app.stageRect.y+app.stageRect.h/2-box.y;
     SDL_Rect u={X,Y,int(box.w),int(box.h)};
+    SDL_Texture* catTexToRender = app.box.t;
 
-    SDL_RenderCopyEx(app.renderer,box.t, nullptr,&u,box.angle-90, nullptr,SDL_FLIP_NONE);
+    if (app.colorEffect != 0 && app.boxOriginalSurface) {
+        if (app.colorEffect != app.lastAppliedColorEffect) {
+            if (app.boxEffectTexture) {
+                SDL_DestroyTexture(app.boxEffectTexture);
+                app.boxEffectTexture = nullptr;
+            }
+            app.boxEffectTexture = createHueShiftedTexture(app.renderer,app.boxOriginalSurface,app.colorEffect);
+            app.lastAppliedColorEffect = app.colorEffect;
+        }
+        if (app.boxEffectTexture) {
+            catTexToRender = app.boxEffectTexture;
+            u.w = int(box.w/2/250*213) ;
+            u.h = int(box.h/2/250*215) ;
+            u.x = X + (int(box.w) - u.w) / 2;
+            u.y = Y + (int(box.h) - u.h) / 2;
+        }
+    } else if (app.colorEffect == 0) {
+        if (app.boxEffectTexture) {
+            SDL_DestroyTexture(app.boxEffectTexture);
+            app.boxEffectTexture = nullptr;
+            app.lastAppliedColorEffect = -999;
+        }
+
+        SDL_SetTextureColorMod(app.box.t, 255, 255, 255);
+    }
+
+
+    SDL_RenderCopyEx(app.renderer, catTexToRender, nullptr, &u, box.angle-90, nullptr, SDL_FLIP_NONE);
     SDL_RenderSetClipRect(app.renderer, NULL);
-    inverseRoundedBoxRGBA(app.renderer,app.W*950/1503-1,app.H*90/609-1,app.W*1496/1503+1,app.H*366/609+1,15*app.W/1365,230,240,255,255);
+    inverseRoundedBoxRGBA(app.renderer,app.stageRect.x-1,app.stageRect.y-1,app.stageRect.x+app.stageRect.w+1,app.stageRect.y+app.stageRect.h+1,15*app.W/1365,230,240,255,255);
+
+////
+    if(app.isSaying){
+        float deg=box.angle-90;
+
+        SDL_Rect rect;
+        rect.w=app.W*85/1503;
+        rect.h=app.H*37/609;
+        rect.x=X+115*box.w/200;
+        if(rect.x+rect.w>app.stageRect.x+app.stageRect.w)
+            rect.x=app.stageRect.x+app.stageRect.w-rect.w;
+        else if(rect.x<app.stageRect.x)
+            rect.x=app.stageRect.x;
+
+        rect.y=Y+22*app.stageRect.h/105-rect.h;
+        if(rect.y<app.stageRect.y)
+            rect.y=app.stageRect.y;
+        else if(rect.y+rect.h>app.stageRect.y+app.stageRect.h)
+            rect.y=app.stageRect.y+app.stageRect.h-rect.h;
+
+        SDL_RenderCopyEx(app.renderer,app.saytexture, nullptr,&rect,0, nullptr,SDL_FLIP_NONE);
+        text(app,rect.x+rect.w/2,rect.y+rect.h*43/100,app.say,"Medium12",{93,100,122,255},false);
+
+    }
+
+
+    if(app.isThinking){
+
+        SDL_Rect rect;
+        rect.w=app.W*85/1503;
+        rect.h=app.H*45/609;
+        rect.x=X+115*box.w/200;
+        if(rect.x+rect.w>app.stageRect.x+app.stageRect.w)
+            rect.x=app.stageRect.x+app.stageRect.w-rect.w;
+        else if(rect.x<app.stageRect.x)
+            rect.x=app.stageRect.x;
+
+        rect.y=Y+22*app.stageRect.h/105-rect.h;
+        if(rect.y<app.stageRect.y)
+            rect.y=app.stageRect.y;
+        else if(rect.y+rect.h>app.stageRect.y+app.stageRect.h)
+            rect.y=app.stageRect.y+app.stageRect.h-rect.h;
+
+        SDL_RenderCopyEx(app.renderer,app.thinktexture, nullptr,&rect,0, nullptr,SDL_FLIP_NONE);
+        text(app,rect.x+rect.w/2,rect.y+rect.h*43/100,app.say,"Medium12",{93,100,122,255},false);
+
+    }
 
 }
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key) {
+    if(go){
+        app.engineRunning=true;
+        go=false;
+    }
     if(stop){
         app.engineRunning=false;
-        stop=false;
+        stop= false;
+    }
+    if(!app.engineRunning){
+        if(app.isWaiting){
+            Uint32 t= SDL_GetTicks()-app.waitStartTime;
+            double T=app.waitDuration-t/1000.0;
+            app.waitRemaining=(T>0)? T:0;
+        }
         return;
     }
-    if(go&& !app.block.empty() &&app.block[0].ID==whenGreenFlagClicked){
-
-        if(app.engineCurrentIndex >= app.block.size())
-            app.engineCurrentIndex= 0;
-        if(app.block[app.engineCurrentIndex].ID == whenGreenFlagClicked)
-            app.engineCurrentIndex++;
-
-
-        app.engineRunning = true;
-        go=false;
-
+    //-- if waiting ended before
+    if (app.engineFinished) {
+        app.engineCurrentIndex = 0;
+        app.engineFinished = false;
+        app.isWaiting = false;
+        app.isSaying=false;
+        app.isThinking=false;
+        app.waitRemaining = 0;
+        app.isRepeating = false;
+        app.repeatCounter = 0;
+        app.repeatInnerIndex = 0;
     }
-    if(app.engineRunning)
-    {
+    if(app.isWaiting&& app.waitRemaining>0){
+        app.waitDuration=app.waitRemaining;
+        app.waitStartTime=SDL_GetTicks();
+        app.waitRemaining=0;
+    }
 
-        for(;app.engineCurrentIndex<app.block.size();app.engineCurrentIndex++){
-            executeBlock(app,app.block[app.engineCurrentIndex],mouse);
-
-        }if(app.engineCurrentIndex >= (int)app.block.size())
-        {
-            app.engineRunning = false;
+    if (app.isWaiting) {
+        Uint32 t = SDL_GetTicks() - app.waitStartTime;
+        if (t>= (Uint32)(app.waitDuration * 1000)) {
+            app.isWaiting = false;
+            app.isSaying=false;
+            app.isThinking=false;
+            app.waitRemaining = 0;
+            if (app.isRepeating) {
+                app.repeatInnerIndex++;
+            } else {
+                app.engineCurrentIndex++;
+            }
+        } else {
+            return;
         }
-    }}
+    }
+    while(true){
+        if(app.isRepeating){
+            int r=app.repeatBlockIndex;
+            auto &innerBlocks=app.block[r].child;
+            while(app.repeatInnerIndex<innerBlocks.size()){
+                auto & b =innerBlocks[app.repeatInnerIndex];
+                if(b.ID==waitSecondes||b.ID==sayForSeconds||b.ID==thinkForSeconds){
+                    app.isWaiting = true;
+                    if(b.ID==waitSecondes){
+                        app.waitDuration = safeStod(b.p1,1);
+                    }
+                    else{app.waitDuration = safeStod(b.p2,2);
+                        Block x;
+                        x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
+                        executeBlock(app,x,mouse);
+                    }
+                    app.waitStartTime = SDL_GetTicks();
+                    app.waitRemaining = 0;
+                    return;
+                }
+                Block x;
+                x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
+                executeBlock(app,x,mouse);
+                app.repeatInnerIndex++;
+            }
+            app.repeatCounter++;
+            if(app.repeatCounter<app.repeatTotal){app.repeatInnerIndex=0;
+                return;
+            }
+            else{
+                app.isRepeating = false;
+                app.repeatCounter = 0;
+                app.repeatInnerIndex = 0;
+                app.engineCurrentIndex = app.repeatBlockIndex + 1;
+            }
+            continue;
+        }
+        if (app.engineCurrentIndex >= (int)app.block.size()) {
+            app.engineRunning = false;
+            app.engineFinished = true;
+            return;
+        }
+        Block &current = app.block[app.engineCurrentIndex];
+
+
+        if (current.ID == whenGreenFlagClicked) {
+            app.engineCurrentIndex++;
+            continue;
+        }
+
+
+        if (current.ID == waitSecondes) {
+            app.isWaiting = true;
+            app.waitDuration = safeStod(current.p1,10);
+            app.waitStartTime = SDL_GetTicks();
+            app.waitRemaining = 0;
+            return;
+        }
+        if (current.ID==sayForSeconds||current.ID==thinkForSeconds) {
+            app.isWaiting = true;
+            app.waitDuration = safeStod(current.p2,2);
+            app.waitStartTime = SDL_GetTicks();
+            app.waitRemaining = 0;
+            executeBlock(app, current,mouse);
+
+            return;
+        }
+
+
+        if (current.ID == repeat) {
+            app.isRepeating = true;
+            app.repeatBlockIndex = app.engineCurrentIndex;
+            app.repeatTotal = safeStod(current.p1,1);
+            app.repeatCounter = 0;
+            app.repeatInnerIndex = 0;
+            continue;
+        }
+
+
+        executeBlock(app, current,mouse);
+        app.engineCurrentIndex++;
+    }
+}
 double safeStod(const std::string &s, double defaultVal )
 {
     if(s.empty()) return defaultVal;
@@ -3452,15 +3884,129 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse){
             app.box.y=rand()%h-h/2;
             break;
         }
+        case goToMousePointer:{
+            int h=276*app.H/609;
+            int w=546*app.W/1503;
+            int x=mouse.x-app.W*1223/1503;
+            int y=mouse.y-app.H*228/609;
+            app.box.x=x;
+            app.box.y=-y;
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+
+            break;
+
+
+        }
         case setSizeTo:{
             int size= safeStod(block.p1,100);
             if(size<10)
                 size=10;
             if(size>600)
                 size=600;
-            app.box.w=size/100.0*100;
-            app.box.h=size/100.0*100;
+            app.box.w=size/100.0*app.boxw;
+            app.box.h=size/100.0*app.boxh;
+            break;
+        }
+        case changeSizeBy:{
+            float w=app.box.w*(1+ safeStod(block.p1,10)/100);
+            float h=app.box.h*(1+ safeStod(block.p1,10)/100);
+            if(w>6*app.boxw){
+                w=6*app.boxw;
+                h=6*app.boxh;
+            }
+            app.box.w=w;
+            app.box.h=h;
+            break;
+        }
+        case sayForSeconds:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isSaying=false;
+                app.say="";
+                break;
+            }
+            app.isSaying= true;
+            app.say=u;
+            break;
+        }
+        case thinkForSeconds:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isThinking=false;
+                app.think="";
+                break;
+            }
+            app.isThinking= true;
+            app.think=u;
+            break;
+        }
+        case say:{std::string u=block.p1;
+            if(u== ""){
+                app.isSaying=false;
+                app.say="";
+                break;
+            }
+            app.isSaying= true;
+            app.say=u;
+            break;}
+        case think:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isThinking=false;
+                app.think="";
+                break;
+            }
+            app.isThinking= true;
+            app.think=u;
+            break;}
 
+
+
+        case show:{
+            app.box.isShowing=true;
+            break;
+        }
+        case hide:{
+            app.box.isShowing=false;
+        }
+        case setColorEffect: {
+            app.colorEffect = safeStod(block.p1,0);
+            break;
+        }
+
+        case setFishEye: {
+            app.fisheyeEffect = safeStod(block.p1,0);
+
+            break;
+        }
+
+        case setWhirlEffect: {
+            app.whirlEffect = safeStod(block.p1,0);
+
+            break;
+        }
+
+        case  clearGraphicEffect: {
+            app.colorEffect = 0;
+            app.fisheyeEffect = 0;
+            app.whirlEffect = 0;
+            app.lastAppliedColorEffect = -999;
+            if (app.boxEffectTexture) {
+                SDL_DestroyTexture(app.boxEffectTexture);
+                app.boxEffectTexture = nullptr;
+            }
+            if (app.box.t) {
+                SDL_SetTextureColorMod(app.box.t, 255, 255, 255);
+                SDL_SetTextureAlphaMod(app.box.t, 255);
+            }
+            break;
         }
 
 
@@ -3486,7 +4032,63 @@ void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2
         SDL_RenderDrawLine(renderer,x2 - fillWidth, y2 - 1 - dy,x2 - 1, y2 - 1 - dy);
     }
 }
-
-
-
-
+void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float &h, float &s, float &v) {
+    float rf = r / 255.0f, gf = g / 255.0f, bf = b / 255.0f;
+    float maxc = fmax(rf, fmax(gf, bf));
+    float minc = fmin(rf, fmin(gf, bf));
+    float diff = maxc - minc;
+    v = maxc;
+    s = (maxc == 0) ? 0 : (diff / maxc);
+    if (diff == 0) {
+        h = 0;
+    } else if (maxc == rf) {
+        h = 60.0f * fmod((gf - bf) / diff, 6.0f);
+    } else if (maxc == gf) {
+        h = 60.0f * ((bf - rf) / diff + 2.0f);
+    } else {
+        h = 60.0f * ((rf - gf) / diff + 4.0f);
+    }
+    if (h < 0) h += 360.0f;
+}
+void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b) {
+    float c = v * s;
+    float x = c * (1.0f - fabs(fmod(h / 60.0f, 2.0f) - 1.0f));
+    float m = v - c;
+    float r1, g1, b1;
+    if      (h < 60)  { r1 = c; g1 = x; b1 = 0; }
+    else if (h < 120) { r1 = x; g1 = c; b1 = 0; }
+    else if (h < 180) { r1 = 0; g1 = c; b1 = x; }
+    else if (h < 240) { r1 = 0; g1 = x; b1 = c; }
+    else if (h < 300) { r1 = x; g1 = 0; b1 = c; }
+    else              { r1 = c; g1 = 0; b1 = x; }
+    r = (Uint8)((r1 + m) * 255);
+    g = (Uint8)((g1 + m) * 255);
+    b = (Uint8)((b1 + m) * 255);
+}
+SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* original,float colorEffect) {
+    SDL_Surface* copy = SDL_ConvertSurfaceFormat(original, SDL_PIXELFORMAT_RGBA32, 0);
+    if (!copy) return nullptr;
+    SDL_LockSurface(copy);
+    Uint32* pixels = (Uint32*)copy->pixels;
+    int pixelCount = copy->w * copy->h;
+    float hueShift = fmod(colorEffect * 1.8f, 360.0f);
+    if (hueShift < 0) hueShift += 360.0f;
+    for (int i = 0; i < pixelCount; i++) {
+        Uint8 r, g, b, a;
+        SDL_GetRGBA(pixels[i], copy->format, &r, &g, &b, &a);
+        if (a == 0) continue;
+        float h, s, v;
+        rgbToHsv(r, g, b, h, s, v);
+        h = fmod(h + hueShift, 360.0f);
+        Uint8 nr, ng, nb;
+        hsvToRgb(h, s, v, nr, ng, nb);
+        pixels[i] = SDL_MapRGBA(copy->format, nr, ng, nb, a);
+    }
+    SDL_UnlockSurface(copy);
+    SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, copy);
+    SDL_FreeSurface(copy);
+    if (tex) {
+        SDL_SetTextureBlendMode(tex, SDL_BLENDMODE_BLEND);
+    }
+    return tex;
+}
