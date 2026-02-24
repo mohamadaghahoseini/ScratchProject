@@ -615,7 +615,7 @@ void UpdateSprite (Sprite& s);
 void RenderStage(AppState & app, Box &box);
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key);
 double safeStod(const std::string &s, double defaultVal );
-void executeBlock(AppState& app, Block & block,MouseState &mouse);
+void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<AllTabButtons> &tabs);
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float &h, float &s, float &v);
 void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b);
@@ -3229,7 +3229,7 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
                     }
                     if(it2.ID==ySpriteTextInput)
                     {
-                        it2.text= std::to_string(int(app.box.y));
+                        it2.text= std::to_string(int(-app.box.y));
                     }
                     if(it2.ID==sizeSpriteTextInput)
                     {
@@ -3269,16 +3269,16 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
                     }
                     if(it2.ID==ySpriteTextInput)
                     {
-                        if(it2.text.empty()|| it2.text=="-")
+                        if(it2.text.empty() || it2.text=="-")
                             app.box.y=0;
                         else
                         {
                             if(std::stoi(it2.text)>app.stageRect.h/2)
-                                app.box.y=-app.stageRect.h/2;
-                            else if(std::stoi(it2.text)<-app.stageRect.h/2)
                                 app.box.y=app.stageRect.h/2;
+                            else if(std::stoi(it2.text)<-app.stageRect.h/2)
+                                app.box.y=-app.stageRect.h/2;
                             else
-                                app.box.y=-std::stoi(it2.text);
+                                app.box.y=std::stoi(it2.text);
                             it2.text=std::to_string(int(app.box.y));
                         }
 
@@ -3581,6 +3581,8 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
         {
             roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15*app.W/1350,255,255,255,255);
             roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h+100,15,185,193,206,255);
+            aalineRGBA(app.renderer,it.rect.x,it.rect.y+app.H*40/609,it.rect.x+it.rect.w,it.rect.y+app.H*40/609,185,193,206,255);
+            text(app,it.rect.x+it.rect.w/2,it.rect.y+app.H*40/609/2,"Stage","Medium10",SDL_Color{87,84,117,255});
         }
         if(it.ID == spriteState)
         {
@@ -4129,7 +4131,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
                     else{app.waitDuration = safeStod(b.p2,2);
                         Block x;
                         x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
-                        executeBlock(app,x,mouse);
+                        executeBlock(app,x,mouse,tabs);
                     }
                     app.waitStartTime = SDL_GetTicks();
                     app.waitRemaining = 0;
@@ -4137,7 +4139,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
                 }
                 Block x;
                 x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
-                executeBlock(app,x,mouse);
+                executeBlock(app,x,mouse,tabs);
                 app.repeatInnerIndex++;
             }
             app.repeatCounter++;
@@ -4178,7 +4180,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             app.waitDuration = safeStod(current.p2,2);
             app.waitStartTime = SDL_GetTicks();
             app.waitRemaining = 0;
-            executeBlock(app, current,mouse);
+            executeBlock(app, current,mouse,tabs);
 
             return;
         }
@@ -4194,7 +4196,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
         }
 
 
-        executeBlock(app, current,mouse);
+        executeBlock(app, current,mouse,tabs);
         app.engineCurrentIndex++;
     }
 }
@@ -4207,7 +4209,9 @@ double safeStod(const std::string &s, double defaultVal )
         return defaultVal;
     }
 }
-void executeBlock(AppState& app, Block & block,MouseState &mouse){
+void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<AllTabButtons> &tabs)
+{
+
     switch(block.ID){
         case move:{
             int h=app.stageRect.h;
@@ -4387,6 +4391,8 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse){
 
 
     }
+
+    UpdateSpriteState(tabs,app);
 }
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
