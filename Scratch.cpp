@@ -84,10 +84,7 @@ constexpr int BackGallery=45;
 constexpr int CLOSE_BUTTONGallery=46;
 constexpr int WINDOW_BUTTONGallery=47;
 constexpr int MINIMIZED_BUTTONGallery=48;
-constexpr int NightCity=49;
-constexpr int Soccer=50;
 constexpr int uploadBackground=51;
-constexpr int savedBackgrounds=52;
 
 //------------------ sprite names
 constexpr int gorbaFront=100;
@@ -253,6 +250,33 @@ constexpr int fillWhite=4020;
 
 constexpr int costumeEditor=4021;
 constexpr int backgroundEditor=4022;
+
+constexpr int backgroundName=5000;
+
+constexpr int library1  = 10001;
+constexpr int library2  = 10002;
+constexpr int library3  = 10003;
+constexpr int library4  = 10004;
+constexpr int library5  = 10005;
+constexpr int library6  = 10006;
+constexpr int library7  = 10007;
+constexpr int library8  = 10008;
+constexpr int library9  = 10009;
+constexpr int library10 = 10010;
+constexpr int library11 = 10011;
+constexpr int library12 = 10012;
+constexpr int library13 = 10013;
+constexpr int library14 = 10014;
+constexpr int library15 = 10015;
+constexpr int library16 = 10016;
+constexpr int library17 = 10017;
+constexpr int library18 = 10018;
+constexpr int library19 = 10019;
+constexpr int library20 = 10020;
+constexpr int library21 = 10021;
+constexpr int library22 = 10022;
+constexpr int library23 = 10023;
+
 // structs
 //// Mamad function
 
@@ -270,6 +294,7 @@ struct Box{
     SDL_Texture* t= nullptr;
     SDL_Texture* background= nullptr;
     SDL_Texture* backgroundStage= nullptr;
+    std::string backgroundName;
     float w=95,h=100;
     float scale=1;
     bool stop=false;
@@ -383,6 +408,7 @@ struct AppState{
     SDL_Color penColor={45,20,111,255};
     bool activeCosEdit=true;
     std::map<int,SDL_Texture*> library;
+    std::map<int,std::string> libraryName;
     //=-----------
 
     float boxh;
@@ -392,9 +418,11 @@ struct AppState{
     int engineCurrentIndex=0;
     bool engineFinished=false;
     bool isWaiting=false;
+    bool isPenDown= false;
     Uint32 waitStartTime=0;
     Uint32 waitDuration=0;
     Uint32 waitRemaining=0;
+    SDL_Color pen={45,20,111,255};
 
     bool isRepeating=false;
     int  repeatBlockIndex=-1;
@@ -414,7 +442,7 @@ struct AppState{
 
     // Graphic Effects
     float colorEffect = 0;
-    float brightnessEffect = 0.;
+    float brightnessEffect = 0;
     float ghostEffect=0;
 
     SDL_Surface* boxOriginalSurface = nullptr;
@@ -424,8 +452,13 @@ struct AppState{
     float lastAppliedBrightnessEffect = -999;
     SDL_Texture* boxghostTexture = nullptr;
     float lastAppliedghostEffect = -999;
+    SDL_Texture * penTexture;
 
     SDL_Rect stageRect;
+    std::vector<std::string > LOG;
+
+    int cycle=0;
+    int logPrintedIndex = 0;
 
 
 };
@@ -626,6 +659,7 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app);
 void RenderGalleryTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture);
 SDL_Texture* createRedTintedTexture(SDL_Renderer* renderer, SDL_Texture* texture);
 void SetBackground(AppState &app, SDL_Texture* t1, SDL_Texture* t2);
+void loadPNGLibrary(AppState &app);
 
 //// Golab function
 
@@ -638,13 +672,20 @@ void UpdateSprite (Sprite& s);
 void RenderStage(AppState & app, Box &box);
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key);
 double safeStod(const std::string &s, double defaultVal );
-void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<AllTabButtons> &tabs);
+void executeBlock(AppState& app, Block & block,MouseState &mouse,int line,std::vector<AllTabButtons> &tabs);
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 void rgbToHsv(Uint8 r, Uint8 g, Uint8 b, float &h, float &s, float &v);
 void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b);
+SDL_Color setBrightness(SDL_Color color, float amount);
+SDL_Color setSaturation(SDL_Color color, float amount);
 SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* original,float colorEffect);
 SDL_Texture* createGhostTexture(SDL_Renderer* renderer, SDL_Surface* original, float brightnessEffect);
 SDL_Texture* createBrightnessTexture(SDL_Renderer* renderer,SDL_Surface* originalSurface,float brightness);
+void pening(bool isp,AppState & app,int x1,int y1);
+void clearPenTexture(AppState& app);
+void Stamp(AppState& app);
+void LogEvent(AppState&app,int line, const std::string& cmd, const std::string& inf);
+void PrintLog(AppState &app);
 
 
 int main( int argc, char* argv[]) {
@@ -697,7 +738,7 @@ int main( int argc, char* argv[]) {
 
     // Variable declaration
     int iconSize=40;
-    int dis=44,diis=40;
+    int dis=44,diis=40,an=app.W*15/1350,libW=app.W*153/1350,libH=app.W*157/1350,libY=app.H*70/609,anY=app.W*15/1350;
     std::vector<AllTabButtons> tabButtons = {
             {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                          {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
@@ -854,7 +895,9 @@ int main( int argc, char* argv[]) {
                                          {deleteButton,SDL_Rect{app.W * 515 / 1365, app.H * 105 / 609, app.W * 80 / 1365, app.H * 50 / 609}},
                                          {colorChose,SDL_Rect{app.W * 175 / 1365, app.H * 440 / 609, 35, 36}},
                                          {costumeEditor,SDL_Rect{app.W * 28 / 1350, app.H * 100 / 609, app.W * 84 / 1350, app.H * 70 / 609}},
-                                         {backgroundEditor,SDL_Rect{app.W * 28 / 1350, app.H * 200 / 609, app.W * 84 / 1350, app.H * 70 / 609}}
+                                         {backgroundEditor,SDL_Rect{app.W * 28 / 1350, app.H * 200 / 609, app.W * 84 / 1350, app.H * 70 / 609}},
+                                         {backgroundName,SDL_Rect{app.W * 215 / 1365, app.H * 113 / 609, app.W * 125 / 1365, app.H * 28 / 609}}
+
                                  }
             },
             {TAB_EXTENSION,false,{{BackExtension,SDL_Rect{0,0,app.W * 130 / 1365, app.H * 50 / 609}},
@@ -869,10 +912,30 @@ int main( int argc, char* argv[]) {
                                          {CLOSE_BUTTONGallery, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                          {WINDOW_BUTTONGallery, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
                                          {MINIMIZED_BUTTONGallery, SDL_Rect{app.W-app.W*3/30,0,app.W/30,app.H/25}},
-                                         {Soccer,SDL_Rect{app.W * 20 / 1365, app.H * 70 / 609, 160, 160}},
-                                         {NightCity,SDL_Rect{app.W * 195 / 1365, app.H * 70 / 609, 160, 160}},
-                                         {savedBackgrounds,SDL_Rect{app.W * 370 / 1365, app.H * 70 / 609, 160, 160}},
-                                         {uploadBackground,SDL_Rect{app.W * 545 / 1365, app.H * 70 / 609, 160, 160}},
+                                         {uploadBackground,SDL_Rect{libW*0+an*1,  libY ,  libW, libH}},
+                                         {library1 ,  SDL_Rect{libW*1  + an*2 ,  libY ,  libW, libH}},
+                                         {library2 ,  SDL_Rect{libW*2  + an*3 ,  libY ,  libW, libH}},
+                                         {library3 ,  SDL_Rect{libW*3  + an*4 ,  libY ,  libW, libH}},
+                                         {library4 ,  SDL_Rect{libW*4  + an*5 ,  libY ,  libW, libH}},
+                                         {library5 ,  SDL_Rect{libW*5  + an*6 ,  libY ,  libW, libH}},
+                                         {library6 ,  SDL_Rect{libW*6  + an*7 ,  libY ,  libW, libH}},
+                                         {library7 ,  SDL_Rect{libW*7  + an*8 ,  libY,  libW, libH}},
+                                         {library8 ,  SDL_Rect{libW*0  + an*1 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library9 ,  SDL_Rect{libW*1  + an*2 ,  libY+libH*1+anY*1,  libW, libH}},
+                                         {library10 ,  SDL_Rect{libW*2  + an*3 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library11 ,  SDL_Rect{libW*3  + an*4 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library12 ,  SDL_Rect{libW*4  + an*5 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library13 ,  SDL_Rect{libW*5  + an*6 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library14 ,  SDL_Rect{libW*6  + an*7 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library15 ,  SDL_Rect{libW*7  + an*8 ,  libY+libH*1+anY*1 ,  libW, libH}},
+                                         {library16 ,  SDL_Rect{libW*0  + an*1 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library17 ,  SDL_Rect{libW*1  + an*2 ,  libY+libH*2+anY*2,  libW, libH}},
+                                         {library18 ,  SDL_Rect{libW*2  + an*3 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library19 ,  SDL_Rect{libW*3  + an*4 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library20 ,  SDL_Rect{libW*4  + an*5 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library21 ,  SDL_Rect{libW*5  + an*6 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library22 ,  SDL_Rect{libW*6  + an*7 ,  libY+libH*2+anY*2 ,  libW, libH}},
+                                         {library23 ,  SDL_Rect{libW*7  + an*8 ,  libY+libH*2+anY*2 ,  libW, libH}},
 
                                  }
 
@@ -901,6 +964,12 @@ int main( int argc, char* argv[]) {
     app.box.t = SDL_CreateTextureFromSurface(app.renderer, surf);
     app.saytexture= LoadTexture(app.renderer,"icons/saying.png");
     app.thinktexture= LoadTexture(app.renderer,"icons/thinking.png");
+    app.penTexture= SDL_CreateTexture(app.renderer,SDL_PIXELFORMAT_RGBA8888,SDL_TEXTUREACCESS_TARGET,app.stageRect.w,app.stageRect.h);
+    SDL_SetTextureBlendMode(app.penTexture,SDL_BLENDMODE_BLEND);
+    SDL_SetRenderTarget(app.renderer,app.penTexture);
+    SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 0);
+    SDL_RenderClear(app.renderer);
+    SDL_SetRenderTarget(app.renderer, nullptr);
 
 
 
@@ -957,9 +1026,7 @@ int main( int argc, char* argv[]) {
     );
     SDL_SetTextureBlendMode(app.box.backgroundStage, SDL_BLENDMODE_BLEND);
 
-
-
-
+    loadPNGLibrary(app);
 
     Theme light, color;
     color = light; // default color
@@ -1064,6 +1131,7 @@ int main( int argc, char* argv[]) {
         keyboardButtonActions(keyboardButton,app,tabButtons);
         AllTabButtonActions(tabButtons,app,color,texture,mouse,keyboardButton,buttonTextures);
         Engine(app,tabButtons,mouse,keyboardButton);
+        PrintLog(app);
         UpdateSpriteState(tabButtons,app);
         SetCursor(app);
         SDL_RenderPresent(renderer);
@@ -1081,6 +1149,12 @@ int main( int argc, char* argv[]) {
     SDL_FreeCursor(app.cursorIBeam);
     SDL_FreeCursor(app.cursorHand);
 
+    for (auto &it:app.library)
+    {
+        SDL_DestroyTexture(it.second);
+    }
+    app.library.clear();
+    app.libraryName.clear();
     SDL_DestroyTexture(app.box.t);
     SDL_DestroyTexture(app.box.background);
     SDL_DestroyTexture(app.box.backgroundStage);
@@ -2194,8 +2268,7 @@ void LoadMyTexture(AppState &app)
     app.texture[hideButton]=LoadTexture(app.renderer, "icons/hide.png");
     app.texture[hideButtonActive]=LoadTexture(app.renderer, "icons/hideActive.png");
     app.texture[backgroundGallery]=LoadTexture(app.renderer, "icons/backgroundGallery.png");
-    app.texture[NightCity]=LoadTexture(app.renderer, "backgroundLibrary/Night City.png");
-    app.texture[Soccer]=LoadTexture(app.renderer, "backgroundLibrary/Soccer.png");
+    app.texture[uploadBackground]=LoadTexture(app.renderer, "icons/uploadLogo.png");
 
 }
 void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCodeTab &color,TabTexture &texture,MouseState &mouse,std::vector<AllTabButtons> &tabs)
@@ -3275,7 +3348,6 @@ void LoadProject(AppState& app)
         app.box.h/=2;
     }
 
-
 }
 void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture)
 {
@@ -3442,7 +3514,7 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
                     }
                     if(it2.ID==ySpriteTextInput)
                     {
-                        it2.text= std::to_string(int(-app.box.y));
+                        it2.text= std::to_string(int(app.box.y));
                     }
                     if(it2.ID==sizeSpriteTextInput)
                     {
@@ -3471,12 +3543,20 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
                         else
                         {
                             if(std::stoi(it2.text)>app.stageRect.w/2)
+                            {
                                 app.box.x=app.stageRect.w/2;
+                                it2.text=std::to_string(int(app.box.x));
+                            }
+
                             else if(std::stoi(it2.text)<-app.stageRect.w/2)
+                            {
                                 app.box.x=-app.stageRect.w/2;
+                                it2.text=std::to_string(int(app.box.x));
+                            }
+
                             else
                                 app.box.x=std::stoi(it2.text);
-                            it2.text=std::to_string(int(app.box.x));
+
                         }
 
                     }
@@ -3487,12 +3567,20 @@ void UpdateSpriteState(std::vector<AllTabButtons> &tabs,AppState &app)
                         else
                         {
                             if(std::stoi(it2.text)>app.stageRect.h/2)
+                            {
                                 app.box.y=app.stageRect.h/2;
+                                it2.text=std::to_string(int(app.box.y));
+                            }
+
                             else if(std::stoi(it2.text)<-app.stageRect.h/2)
+                            {
                                 app.box.y=-app.stageRect.h/2;
+                                it2.text=std::to_string(int(app.box.y));
+                            }
+
                             else
                                 app.box.y=std::stoi(it2.text);
-                            it2.text=std::to_string(int(app.box.y));
+
                         }
 
                     }
@@ -3546,6 +3634,13 @@ void RenderGalleryTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &
                     if(it2.ID==TAB_GALLERY)
                         it2.active= false;
                 }
+
+//                for (auto &it:app.library)
+//                {
+//                    SDL_DestroyTexture(it.second);
+//                }
+//                app.library.clear();
+//                app.libraryName.clear();
             }
             app.isOnBlock=false;
             if(it.onButton)
@@ -3562,6 +3657,12 @@ void RenderGalleryTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &
             }
             if(it.leftClick)
             {
+//                for (auto &it:app.library)
+//                {
+//                    SDL_DestroyTexture(it.second);
+//                }
+//                app.library.clear();
+//                app.libraryName.clear();
                 const SDL_MessageBoxButtonData buttons[] = {
 
                         { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "No" },
@@ -3625,102 +3726,12 @@ void RenderGalleryTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &
                 }
             }
         }
-        if(it.ID==NightCity)
-        {
-            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
-            SDL_Rect night={it.rect.x+18,it.rect.y+18,124,93};
-            SDL_RenderCopy(app.renderer,app.texture[NightCity],NULL,&night);
-            if(!it.onButton)
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-            }
-            else
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-            }
-            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h*135/160,"Night City","Roman17",SDL_Color{86,89,111,255});
-            if(it.leftClick)
-            {
-                SetBackground(app,app.texture[NightCity],app.box.background);
-                SetBackground(app,app.box.background,app.box.backgroundStage);
-                for(auto &it2:tabs)
-                {
-                    if(it2.ID==TAB_GENERAL)
-                        it2.active=true;
-                    if(it2.ID==TAB_CODE)
-                        it2.active=true;
-                    if(it2.ID==TAB_GALLERY)
-                        it2.active= false;
-                }
-            }
-        }
-        if(it.ID==Soccer)
-        {
-            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
-            SDL_Rect night={it.rect.x+18,it.rect.y+18,124,93};
-            SDL_RenderCopy(app.renderer,app.texture[Soccer],NULL,&night);
-            if(!it.onButton)
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-            }
-            else
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-            }
-            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h*135/160,"Soccer","Roman17",SDL_Color{86,89,111,255});
-            if(it.leftClick)
-            {
-                SetBackground(app,app.texture[Soccer],app.box.background);
-                SetBackground(app,app.box.background,app.box.backgroundStage);
-                for(auto &it2:tabs)
-                {
-                    if(it2.ID==TAB_GENERAL)
-                        it2.active=true;
-                    if(it2.ID==TAB_CODE)
-                        it2.active=true;
-                    if(it2.ID==TAB_GALLERY)
-                        it2.active= false;
-                }
-            }
-        }
-        if(it.ID==savedBackgrounds)
-        {
-            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
-            // image(app,it.rect.x,it.rect.y,1,PenPhoto);
-            inverseRoundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,233,241,252,255);
-
-            if(!it.onButton)
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,217,217,217,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
-            }
-            else
-            {
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
-                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
-            }
-            //  text(app,it.rect.x+20,it.rect.y+it.rect.h*184/245,"Pen","Bold19",SDL_Color{86,89,111,255}, true);
-            //   text(app,it.rect.x+20,it.rect.y+it.rect.h*208/245,"Draw with your sprites.","Roman19",SDL_Color{86,89,111,255}, true);
-            if(it.leftClick)
-            {
-
-            }
-        }
         if(it.ID==uploadBackground)
         {
+
             roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
-            // image(app,it.rect.x,it.rect.y,1,PenPhoto);
-            inverseRoundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,233,241,252,255);
+            SDL_Rect night={it.rect.x+18,it.rect.y+18,124,93};
+            image(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h*1/3,16,it.ID,true);
             if(!it.onButton)
             {
                 roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
@@ -3733,11 +3744,102 @@ void RenderGalleryTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &
                 roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
                 roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
             }
-            //  text(app,it.rect.x+20,it.rect.y+it.rect.h*184/245,"Pen","Bold19",SDL_Color{86,89,111,255}, true);
-            //   text(app,it.rect.x+20,it.rect.y+it.rect.h*208/245,"Draw with your sprites.","Roman19",SDL_Color{86,89,111,255}, true);
+            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h*135/160,"Upload Background","Roman15",SDL_Color{86,89,111,255});
             if(it.leftClick)
             {
+                const char *filters[] = {"*.png", "*.jpg"};
+                const char *selectedFile = tinyfd_openFileDialog(
+                        "Select an Image",
+                        "",
+                        2,
+                        filters,
+                        "Image Files",
+                        0
+                );
 
+                if (selectedFile != NULL)
+                {
+                    std::string srcPath(selectedFile);
+
+                    SDL_Texture *tex = IMG_LoadTexture(app.renderer, srcPath.c_str());
+
+                    if (tex != nullptr)
+                    {
+                        SetBackground(app,tex,app.box.background);
+                        SetBackground(app,app.box.background,app.box.backgroundStage);
+                    }
+                    SDL_DestroyTexture(tex);
+
+                    std::string fileName = srcPath.substr(srcPath.find_last_of("\\") + 1);
+                    app.box.backgroundName=std::string(fileName).substr(0,std::string(fileName).size()-4);
+                    for(auto &it2:tabs)
+                    {
+                        if(it2.ID==TAB_GENERAL)
+                            it2.active=true;
+                        if(it2.ID==TAB_CODE)
+                            it2.active=true;
+                        if(it2.ID==TAB_GALLERY)
+                            it2.active= false;
+                        if(it2.ID==TAB_COSTUMES)
+                        {
+                            if(it.ID==backgroundName)
+                                it.text= app.box.backgroundName;
+                        }
+                    }
+
+                    std::string destPath = std::string("backgroundLibrary") + "\\" + fileName;
+                    CopyFileA(srcPath.c_str(), destPath.c_str(), FALSE);
+
+                    loadPNGLibrary(app);
+                }
+            }
+
+        }
+        if(10000<=it.ID && it.ID<=10023 && (it.ID-10000)<=app.library.size())
+        {
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,255,255,255,255);
+            int gap=16*app.W/1350;
+            SDL_Rect night={it.rect.x+gap,it.rect.y+gap,it.rect.w-2*gap,it.rect.w-4*gap};
+            SDL_RenderCopy(app.renderer,app.library[it.ID-10000],NULL,&night);
+            if(!it.onButton)
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,217,217,217,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,217,217,217,255);
+            }
+            else
+            {
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w+1,it.rect.y+it.rect.h+1,8,133,92,214,255);
+                roundedRectangleRGBA(app.renderer,it.rect.x-1,it.rect.y-1,it.rect.x+it.rect.w,it.rect.y+it.rect.h,8,133,92,214,255);
+            }
+            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h*135/160,app.libraryName[it.ID-10000],"Roman17",SDL_Color{86,89,111,255});
+            if(it.leftClick)
+            {
+                app.box.backgroundName=app.libraryName[it.ID-10000];
+                SetBackground(app,app.library[it.ID-10000],app.box.background);
+                SetBackground(app,app.box.background,app.box.backgroundStage);
+                for(auto &it2:tabs)
+                {
+                    if(it2.ID==TAB_GENERAL)
+                        it2.active=true;
+                    if(it2.ID==TAB_CODE)
+                        it2.active=true;
+                    if(it2.ID==TAB_GALLERY)
+                        it2.active= false;
+                    if(it2.ID==TAB_COSTUMES)
+                    {
+                       if(it.ID==backgroundName)
+                           it.text=app.libraryName[it.ID-10000];
+                    }
+                }
+
+//                for (auto &it:app.library)
+//                {
+//                    SDL_DestroyTexture(it.second);
+//                }
+//                app.library.clear();
+//                app.libraryName.clear();
             }
         }
     }
@@ -3846,7 +3948,60 @@ void SetBackground(AppState &app, SDL_Texture* t1, SDL_Texture* t2)
     SDL_RenderCopy(app.renderer, t1, &srcRect, NULL);
     SDL_SetRenderTarget(app.renderer, NULL);
 }
+void loadPNGLibrary(AppState &app)
+{
 
+    for (auto &it:app.library)
+    {
+        SDL_DestroyTexture(it.second);
+    }
+    app.library.clear();
+    app.libraryName.clear();
+
+    std::string searchPath = "backgroundLibrary\\*.png";
+
+    WIN32_FIND_DATAA findData;
+
+    HANDLE hFind = FindFirstFileA(searchPath.c_str(), &findData);
+    if(hFind==INVALID_HANDLE_VALUE)
+        return;
+    app.libraryName[1]=std::string(findData.cFileName).substr(0,std::string(findData.cFileName).size()-4);
+    app.library[1]= IMG_LoadTexture(app.renderer,("backgroundLibrary\\"+app.libraryName[1]+".png").c_str());
+    for(int i=2;FindNextFileA(hFind, &findData);i++)
+    {
+        if(i>=24)
+        {
+            SDL_MessageBoxButtonData buttons[] = {
+                    {SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 0, "OK"}
+            };
+            SDL_MessageBoxData msgBox = {
+                    SDL_MESSAGEBOX_WARNING,
+                    app.window,
+                    "Background Library",
+                    "Background library is full. \n Remove some backgrounds",
+                    1,
+                    buttons,
+                    NULL
+            };
+            int buttonId = -1;
+            SDL_ShowMessageBox(&msgBox, &buttonId);
+            if(buttonId==0)
+                return;
+
+            return;
+        }
+        app.libraryName[i]=std::string(findData.cFileName).substr(0,std::string(findData.cFileName).size()-4);
+        app.library[i]= IMG_LoadTexture(app.renderer,("backgroundLibrary\\"+app.libraryName[i]+".png").c_str());
+        if(!app.library[i])
+        {
+            app.endProgram=true;
+            std::cout<<"Error in load Library"<<std::endl;
+            return;
+        }
+
+    }
+    FindClose(hFind);
+}
 
 
 
@@ -4576,7 +4731,7 @@ void RenderStage(AppState & app, Box &box)
             app.lastAppliedghostEffect = -999;
         }
     }
-
+    SDL_RenderCopy(app.renderer,app.penTexture,nullptr,&app.stageRect);
     SDL_RenderCopyEx(app.renderer, catTexToRender, nullptr, &u, box.angle-90, nullptr, SDL_FLIP_NONE);
     SDL_RenderSetClipRect(app.renderer, NULL);
     inverseRoundedBoxRGBA(app.renderer,app.stageRect.x-1,app.stageRect.y-1,app.stageRect.x+app.stageRect.w+1,app.stageRect.y+app.stageRect.h+1,15*app.W/1365,230,240,255,255);
@@ -4630,9 +4785,13 @@ void RenderStage(AppState & app, Box &box)
 
 };
 void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,KeyboardButton &key) {
-    if(go){
-        app.engineRunning=true;
-        go=false;
+    if (go) {
+        go = false;
+        if (!app.block.empty() && app.block[0].ID == whenGreenFlagClicked) {
+            app.engineRunning = true;
+
+        }
+
     }
     if(stop){
         app.engineRunning=false;
@@ -4646,7 +4805,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
         }
         return;
     }
-    //-- if waiting ended before
+
     if (app.engineFinished) {
         app.engineCurrentIndex = 0;
         app.engineFinished = false;
@@ -4680,6 +4839,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             return;
         }
     }
+    app.cycle++;
     while(true){
         if(app.isRepeating){
             int r=app.repeatBlockIndex;
@@ -4688,21 +4848,22 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
                 auto & b =innerBlocks[app.repeatInnerIndex];
                 if(b.ID==waitSecondes||b.ID==sayForSeconds||b.ID==thinkForSeconds){
                     app.isWaiting = true;
-                    if(b.ID==waitSecondes){
-                        app.waitDuration = safeStod(b.p1,1);
-                    }
-                    else{app.waitDuration = safeStod(b.p2,2);
-                        Block x;
-                        x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
-                        executeBlock(app,x,mouse,tabs);
-                    }
+                    app.waitDuration = safeStod(b.p2,1);
                     app.waitStartTime = SDL_GetTicks();
                     app.waitRemaining = 0;
+                    int line;
+                    line=r+app.repeatInnerIndex;
+                    Block x;
+                    x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;x.color=b.color;
+                    executeBlock(app,x,mouse,line,tabs);
+
                     return;
                 }
+                int line;
+                line=r+app.repeatInnerIndex;
                 Block x;
-                x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;
-                executeBlock(app,x,mouse,tabs);
+                x.ID=b.ID;x.p1=b.p1;x.p2=b.p2;x.color=b.color;
+                executeBlock(app,x,mouse,line,tabs);
                 app.repeatInnerIndex++;
             }
             app.repeatCounter++;
@@ -4726,7 +4887,9 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
 
 
         if (current.ID == whenGreenFlagClicked) {
+            executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
             app.engineCurrentIndex++;
+
             continue;
         }
 
@@ -4736,6 +4899,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             app.waitDuration = safeStod(current.p1,10);
             app.waitStartTime = SDL_GetTicks();
             app.waitRemaining = 0;
+            executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
             return;
         }
         if (current.ID==sayForSeconds||current.ID==thinkForSeconds) {
@@ -4743,7 +4907,7 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             app.waitDuration = safeStod(current.p2,2);
             app.waitStartTime = SDL_GetTicks();
             app.waitRemaining = 0;
-            executeBlock(app, current,mouse,tabs);
+            executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
 
             return;
         }
@@ -4755,11 +4919,12 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             app.repeatTotal = safeStod(current.p1,1);
             app.repeatCounter = 0;
             app.repeatInnerIndex = 0;
+            executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
             continue;
         }
 
 
-        executeBlock(app, current,mouse,tabs);
+        executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
         app.engineCurrentIndex++;
     }
 }
@@ -4772,15 +4937,17 @@ double safeStod(const std::string &s, double defaultVal )
         return defaultVal;
     }
 }
-void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<AllTabButtons> &tabs)
+void executeBlock(AppState& app, Block & block,MouseState &mouse,int line,std::vector<AllTabButtons> &tabs)
 {
-
     switch(block.ID){
         case move:{
             int h=app.stageRect.h;
             int w=app.stageRect.w;
+            float x0=app.box.x;
+            float y0=app.box.y;
             app.box.x+= safeStod(block.p1,10)*sin(app.box.angle*M_PI/180.0);
             app.box.y+=safeStod(block.p1,10)*cos(app.box.angle*M_PI/180.0);
+
             if(app.box.x<=-w/2)
                 app.box.x=-w/2;
             else if(app.box.x>=w/2)
@@ -4789,21 +4956,31 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
                 app.box.y=-h/2;
             else if(app.box.y>=h/2)
                 app.box.y=h/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x: "+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"] [y:"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
+            LogEvent(app,line,"MOVE",inf);
             break;
 
         }
         case turnRDegrees:
-        {
+        {   double angle=app.box.angle;
             app.box.angle+=safeStod(block.p1,15);
+            std::string inf="[theta"+std::to_string(int(angle))+"->"+std::to_string(int(app.box.angle))+"]";
+            LogEvent(app,line,"TURN_R",inf);
             break;
         }
         case turnLDegrees:
-        {
+        {   double angle=app.box.angle;
             app.box.angle-=safeStod(block.p1,15);
+            std::string inf="[theta"+std::to_string(int(angle))+"->"+std::to_string(int(app.box.angle))+"]";
+            LogEvent(app,line,"TURN_L",inf);
             break;
         }
         case goToXY:
-        {       int h=app.stageRect.h;
+        {
+            int x0=app.box.x;
+            int y0=app.box.y;
+            int h=app.stageRect.h;
             int w=app.stageRect.w;
             float gx = safeStod(block.p1, 0.0);
             float gy = safeStod(block.p2, 0.0);
@@ -4817,21 +4994,87 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
                 app.box.y=-h/2;
             else if(app.box.y>=h/2)
                 app.box.y=h/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"] [y:"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
+            LogEvent(app,line,"GOTO_XY",inf);
+            break;
+        }
+        case changeXBy:{
+            int x0=app.box.x;
+            int y0=app.box.y;
+            int w=app.stageRect.w;
+            app.box.x+= safeStod(block.p1,10);
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"]";
+            LogEvent(app,line,"CHANGE_X",inf);
+            break;
+
+        }
+        case changeYBy:{
+            int x0=app.box.x;
+            int y0=app.box.y;
+            int h=app.stageRect.h;
+            app.box.y+=safeStod(block.p1,10);
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[y"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
+            LogEvent(app,line,"CHANGE_Y",inf);
+            break;
+        }
+        case setXTo:{
+            int x0=app.box.x;
+            int y0=app.box.y;
+            int w=app.stageRect.w;
+            app.box.x= safeStod(block.p1,10);
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"]";
+            LogEvent(app,line,"SET_X",inf);
+            break;
+        }
+        case setYTo:{
+            int x0=app.box.x;
+            int y0=app.box.y;
+            int h=app.stageRect.h;
+            app.box.y=safeStod(block.p1,10);
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[y"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
+            LogEvent(app,line,"SET_Y",inf);
             break;
         }
         case goToRandomPosition:
-        {
+        {    int x0=app.box.x;
+            int y0=app.box.y;
             int h=app.stageRect.h;
             int w=app.stageRect.w;
             app.box.x=rand()%w-w/2;
             app.box.y=rand()%h-h/2;
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"] [y:"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
+            LogEvent(app,line,"GOTO_RAND",inf);
             break;
         }
         case goToMousePointer:{
+            int x0=app.box.x;
+            int y0=app.box.y;
             int h=app.stageRect.h;
             int w=app.stageRect.w;
-            int x=mouse.x-app.W*1223/1503;
-            int y=mouse.y-app.H*228/609;
+            int x=mouse.x-app.stageRect.x-app.stageRect.w/2;
+            int y=mouse.y-app.stageRect.y-app.stageRect.h/2;
             app.box.x=x;
             app.box.y=-y;
             if(app.box.x<=-w/2)
@@ -4842,34 +5085,43 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
                 app.box.y=-h/2;
             else if(app.box.y>=h/2)
                 app.box.y=h/2;
-
+            pening(app.isPenDown,app,x0,y0);
+            std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(app.box.x)+"] [y:"+std::to_string(y0)+"->"+std::to_string(app.box.y)+"]";
+            LogEvent(app,line,"GOTO_MOUSE",inf);
             break;
 
 
         }
         case setSizeTo:{
+            double size0=app.box.scale;
             int size= safeStod(block.p1,100);
             if(size<10)
                 size=10;
             if(size>600)
                 size=600;
-            app.box.w=size/100.0*app.boxw;
-            app.box.h=size/100.0*app.boxh;
+            app.box.scale=size/100;
+//            app.box.w=size/100.0*app.boxw;
+//            app.box.h=size/100.0*app.boxh;
+            std::string inf="[size"+std::to_string(size0)+"->"+std::to_string(app.box.scale)+"]";
+            LogEvent(app,line,"SET_SIZE",inf);
             break;
         }
         case changeSizeBy:{
-            float w=app.box.w*(1+ safeStod(block.p1,10)/100);
-            float h=app.box.h*(1+ safeStod(block.p1,10)/100);
-            if(w>6*app.boxw){
-                w=6*app.boxw;
-                h=6*app.boxh;
-            }
-            app.box.w=w;
-            app.box.h=h;
+            double size0=app.box.scale;
+            int size= safeStod(block.p1,10)/100+size0;
+            if(size<0.1)
+                size=0.1;
+            if(size>6)
+                size=6;
+            app.box.scale=size;
+
+            std::string inf="[size"+std::to_string(size0)+"->"+std::to_string(app.box.scale)+"]";
+            LogEvent(app,line,"CHANGE_SIZE",inf);
             break;
         }
         case sayForSeconds:{
             std::string u=block.p1;
+
             if(u== ""){
                 app.isSaying=false;
                 app.say="";
@@ -4877,6 +5129,9 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
             }
             app.isSaying= true;
             app.say=u;
+            std::string inf="[say"+u+"->"+"for"+block.p2+"secconds]";
+            LogEvent(app,line,"SAY_SEC",inf);
+
             break;
         }
         case thinkForSeconds:{
@@ -4888,6 +5143,8 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
             }
             app.isThinking= true;
             app.think=u;
+            std::string inf="[think"+u+"->"+"for"+block.p2+"secconds]";
+            LogEvent(app,line,"THINK_SEC",inf);
             break;
         }
         case say:{std::string u=block.p1;
@@ -4898,7 +5155,10 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
             }
             app.isSaying= true;
             app.say=u;
-            break;}
+            std::string inf="[say"+u+"]";
+            LogEvent(app,line,"SAY",inf);
+            break;
+        }
         case think:{
             std::string u=block.p1;
             if(u== ""){
@@ -4908,34 +5168,45 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
             }
             app.isThinking= true;
             app.think=u;
+            std::string inf="[think"+u+"]";
+            LogEvent(app,line,"THINK",inf);
             break;}
 
 
 
         case show:{
             app.box.isShowing=true;
+            LogEvent(app,line,"SHOW_SPRITE","");
             break;
         }
         case hide:{
             app.box.isShowing=false;
+            LogEvent(app,line,"HIDE_SPRITE","");
         }
         case setColorEffect: {
+            int y=app.colorEffect;
             app.colorEffect = safeStod(block.p1,0);
+            std::string inf="[color"+std::to_string(y)+"->"+std::to_string(app.colorEffect)+"]";
+            LogEvent(app,line,"SET_COLOR",inf);
             break;
         }
 
         case setFishEye: {
+            int y=app.brightnessEffect;
             app.brightnessEffect = safeStod(block.p1,0);
+            std::string inf="[brightness"+std::to_string(y)+"->"+std::to_string(app.brightnessEffect)+"]";
+            LogEvent(app,line,"SET_BRIGTNESS",inf);
 
             break;
         }
-
         case setWhirlEffect: {
+            int y=app.ghostEffect;
             app.ghostEffect= safeStod(block.p1,0);
+            std::string inf="[ghost"+std::to_string(y)+"->"+std::to_string(app.ghostEffect)+"]";
+            LogEvent(app,line,"SET_GHOST",inf);
 
             break;
         }
-
         case  clearGraphicEffect: {
             app.colorEffect = 0;
             app.brightnessEffect = 0;
@@ -4949,12 +5220,62 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,std::vector<All
                 SDL_SetTextureColorMod(app.box.t, 255, 255, 255);
                 SDL_SetTextureAlphaMod(app.box.t, 255);
             }
+            LogEvent(app,line,"CLEAR_GFX","");
             break;
+        }
+
+        case penDown:{
+            app.isPenDown= true;
+            LogEvent(app,line,"PENISDOWN","");
+            break;
+        }
+        case penUp:{
+            app.isPenDown=false;
+            LogEvent(app,line,"PENISUP","");
+            break;
+        }
+        case eraseAll: {
+            clearPenTexture(app);
+            LogEvent(app,line,"PENERASE","");
+            break;
+        }
+        case stamp:{
+            Stamp (app);
+            LogEvent(app,line,"SPRITESTAMPED","");
+            break;
+
+        }
+        case setPenColorTo:{
+            app.pen=block.color;
+            app.ghostEffect= safeStod(block.p1,0);
+            LogEvent(app,line,"PENCOLORCHANGED","");
+            break;
+        }
+        case setPenBrightnees:{
+            int b= safeStod(block.p1,50);
+            app.pen= setBrightness(app.pen,b);
+            LogEvent(app,line,"PENBRIGHTNESSCHANGED","");
+
+            break;
+        }
+        case setPenSaturation:{
+            int b= safeStod(block.p1,50);
+            app.pen= setSaturation(app.pen,b);
+            LogEvent(app,line,"PENSATUATIONCHANGED","");
+            break;
+        }
+        case waitSecondes:{
+            std::string inf="[ waiting for "+block.p1+"seconds]";
+            LogEvent(app,line,"WAITING",inf);
+
+            break;
+        }
+        case whenGreenFlagClicked:{
+            LogEvent(app,line,"START","");
         }
 
 
     }
-
     UpdateSpriteState(tabs,app);
 }
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a)
@@ -5009,6 +5330,44 @@ void hsvToRgb(float h, float s, float v, Uint8 &r, Uint8 &g, Uint8 &b) {
     r = (Uint8)((r1 + m) * 255);
     g = (Uint8)((g1 + m) * 255);
     b = (Uint8)((b1 + m) * 255);
+}
+SDL_Color setBrightness(SDL_Color color, float amount) {
+    float h, s, v;
+    rgbToHsv(color.r, color.g, color.b, h, s, v);
+    float norm = amount / 100.0f;
+    if (norm > 0) {
+        v = v + (1.0f - v) * norm;
+        s = s * (1.0f - norm);
+    } else {
+        v = v * (1.0f + norm);
+    }
+
+    v = fmax(0.0f, fmin(1.0f, v));
+    s = fmax(0.0f, fmin(1.0f, s));
+    Uint8 r, g, b;
+    hsvToRgb(h, s, v, r, g, b);
+    return {r, g, b, color.a};
+}
+SDL_Color setSaturation(SDL_Color color, float amount) {
+
+
+    float h, s, v;
+    rgbToHsv(color.r, color.g, color.b, h, s, v);
+
+    float norm = amount / 100.0f;
+
+    if (norm > 0) {
+        s = s + (1.0f - s) * norm;
+    } else {
+        s = s * (1.0f + norm);
+    }
+
+    s = fmax(0.0f, fmin(1.0f, s));
+
+    Uint8 r, g, b;
+    hsvToRgb(h, s, v, r, g, b);
+
+    return {r, g, b, color.a};
 }
 SDL_Texture* createHueShiftedTexture(SDL_Renderer* renderer,SDL_Surface* original,float colorEffect) {
     SDL_Surface* copy = SDL_ConvertSurfaceFormat(original, SDL_PIXELFORMAT_RGBA32, 0);
@@ -5143,4 +5502,58 @@ SDL_Texture* createBrightnessTexture(SDL_Renderer* renderer,SDL_Surface* origina
     SDL_Texture* tex = SDL_CreateTextureFromSurface(renderer, copy);
     SDL_FreeSurface(copy);
     return tex;
+}
+void pening(bool isp,AppState & app,int x1,int y1){
+    if (!isp)
+        return;
+    int X1=app.stageRect.w/2+x1;
+    int Y1=-y1+app.stageRect.h/2;
+    int X2=app.stageRect.w/2+app.box.x;
+    int Y2=-app.box.y+app.stageRect.h/2;
+
+    SDL_SetRenderTarget(app.renderer,app.penTexture);
+    aalineRGBA(app.renderer,X1,Y1-1,X2,Y2-1,app.pen.r,app.pen.g,app.pen.b,app.pen.a);
+    aalineRGBA(app.renderer,X1,Y1,X2,Y2,app.pen.r,app.pen.g,app.pen.b,app.pen.a);
+    //aalineRGBA(app.renderer,X1,Y1+1,X2,Y2+1,app.pen.r,app.pen.g,app.pen.b,app.pen.a);
+    SDL_SetRenderTarget(app.renderer, nullptr);
+    return;
+}
+void clearPenTexture(AppState& app) {
+    if (app.penTexture) {
+        SDL_SetRenderTarget(app.renderer, app.penTexture);
+        SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 0);
+        SDL_RenderClear(app.renderer);
+        SDL_SetRenderTarget(app.renderer, nullptr);
+    }
+}
+void Stamp(AppState& app){
+    if(!app.box.t||!app.penTexture) return;
+    SDL_SetRenderTarget(app.renderer,app.penTexture);
+    int X=app.box.x+app.stageRect.w/2-app.box.w/2;
+    int Y=-app.box.y+app.stageRect.h/2-app.box.h/2;
+    SDL_Rect u={X,Y,int(app.box.w),int(app.box.h)};
+    SDL_Texture* texToStamp;
+    if (app.boxghostTexture) {
+        texToStamp = app.boxghostTexture;
+    } else if (app.boxBrightnessTexture) {
+        texToStamp = app.boxBrightnessTexture;
+    } else if (app.boxEffectTexture) {
+        texToStamp = app.boxEffectTexture;
+    } else {
+        texToStamp = app.box.t;
+    }
+    double renderAngle = app.box.angle - 90.0;
+    SDL_RenderCopyEx(app.renderer,texToStamp,nullptr,&u,renderAngle,nullptr,SDL_FLIP_NONE);
+    SDL_SetRenderTarget(app.renderer, nullptr);
+}
+void LogEvent(AppState&app,int line, const std::string& cmd, const std::string&  inf) {
+
+    std::string h="[Cycle:"+ std::to_string(app.cycle)+"] [Line: "+std::to_string(line)+"] [CMD: "+cmd+"]->"+inf;
+    app.LOG.push_back(h);
+}
+void PrintLog(AppState &app) {
+    for (int i = app.logPrintedIndex; i < (int)app.LOG.size(); i++) {
+        std::cout << app.LOG[i] << std::endl;
+    }
+    app.logPrintedIndex = (int)app.LOG.size();
 }
