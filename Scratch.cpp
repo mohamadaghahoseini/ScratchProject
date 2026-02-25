@@ -255,6 +255,8 @@ constexpr int backgroundName=5000;
 constexpr int save=5001;
 constexpr int saveLibrary=5002;
 
+constexpr int logBox=6000;
+
 constexpr int library1  = 10001;
 constexpr int library2  = 10002;
 constexpr int library3  = 10003;
@@ -664,7 +666,6 @@ SDL_Texture* createRedTintedTexture(SDL_Renderer* renderer, SDL_Texture* texture
 void SetBackground(AppState &app, SDL_Texture* t1, SDL_Texture* t2);
 void loadPNGLibrary(AppState &app);
 bool LibraryChanged(AppState &app);
-
 //// Golab function
 
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color,MouseState &mouse,std::vector<AllTabButtons> &tabs);
@@ -771,6 +772,7 @@ int main( int argc, char* argv[]) {
                                          {nameSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 50 / 1365, app.H * 411 / 609, app.W * 125 / 1365, app.H * 28 / 609},"Sprite1",true,true},
                                          {showButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
                                          {hideButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365+app.W * 36 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
+                                         {logBox, SDL_Rect{app.W*950/1503,app.H - app.H * 110 / 609,-app.W*965/1503+app.W * 1271 / 1350,app.H * 105 / 609}}
                                  }
 
             },
@@ -4178,6 +4180,7 @@ bool LibraryChanged(AppState &app)
 
 
 
+
 //// Golab function
 
 void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGeneralTab &color,MouseState &mouse,std::vector<AllTabButtons> &tabs)
@@ -4406,6 +4409,7 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
                         SDL_RenderClear(app.renderer);
                         SDL_SetRenderTarget(app.renderer,NULL);
                         SetBackground(app,app.box.background,app.box.backgroundStage);
+                        app.LOG.empty();
                     }
                     if(buttonId==2)
                     {
@@ -4613,10 +4617,42 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
             }
 
         }
+        if(it.ID == logBox)
+        {
+            roundedBoxRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15*app.W/1350,255,255,255,255);
+            roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,185,193,206,255);
+           // text(app,it.rect.x+it.rect.w*1/32,it.rect.y+it.rect.h*17/20,"Test","Roman12",SDL_Color{87, 94, 117,255},true);
+           // text(app,it.rect.x+it.rect.w*1/32,it.rect.y+it.rect.h*14/20,"Test","Roman12",SDL_Color{87, 94, 117,255},true);
+           // text(app,it.rect.x+it.rect.w*1/32,it.rect.y+it.rect.h*11/20,"Test","Roman12",SDL_Color{87, 94, 117,255},true);
+           // drawLog(app,it.rect,7);
+            int size=app.LOG.size();
+            int s=std::max(0, (size-8));
+            std::string t;
+            for(int i=s;i<app.LOG.size();i++)
+            {
+                if(i>s)
+                    t += "\n";
+                t+=app.LOG[i];
+            }
+            if(!t.empty())
+            {
+                SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(app.font["Roman14"], t.c_str(), {87, 94, 117,255}, it.rect.w - 20);
+            SDL_Texture* tex = SDL_CreateTextureFromSurface(app.renderer, surface);
+            SDL_FreeSurface(surface);
+                int w, h;
+                SDL_QueryTexture(tex, NULL, NULL, &w, &h);
+                SDL_Rect dst = {it.rect.x + 10, it.rect.y + it.rect.h - h - 10, w, h};
+                SDL_RenderCopy(app.renderer, tex, NULL, &dst);
+
+            }
+
+
+        }
     }
 
 
 }
+
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file){
     SDL_Surface* surface = IMG_Load(file.c_str());
     if(!surface)
