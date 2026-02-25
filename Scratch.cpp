@@ -89,6 +89,12 @@ constexpr int Soccer=50;
 constexpr int uploadBackground=51;
 constexpr int savedBackgrounds=52;
 
+constexpr int BackGallery=45;
+constexpr int CLOSE_BUTTONGallery=46;
+constexpr int WINDOW_BUTTONGallery=47;
+constexpr int MINIMIZED_BUTTONGallery=48;
+constexpr int uploadBackground=51;
+
 //------------------ sprite names
 constexpr int gorbaFront=100;
 constexpr int gorbaBack=101;
@@ -437,6 +443,27 @@ struct AppState{
     int logPrintedIndex = 0;
 
 
+    // Graphic Effects
+    float colorEffect = 0;
+    float brightnessEffect = 0;
+    float ghostEffect=0;
+
+    SDL_Surface* boxOriginalSurface = nullptr;
+    SDL_Texture* boxEffectTexture = nullptr;
+    float lastAppliedColorEffect = -999;
+    SDL_Texture* boxBrightnessTexture = nullptr;
+    float lastAppliedBrightnessEffect = -999;
+    SDL_Texture* boxghostTexture = nullptr;
+    float lastAppliedghostEffect = -999;
+    SDL_Texture * penTexture;
+
+    SDL_Rect stageRect;
+    std::vector<std::string > LOG;
+
+    int cycle=0;
+    int logPrintedIndex = 0;
+
+
 };
 
 struct MouseState{
@@ -713,7 +740,7 @@ int main( int argc, char* argv[]) {
 
     // Variable declaration
     int iconSize=40;
-    int dis=44,diis=40;
+    int dis=44,diis=40,an=app.W*15/1350,libW=app.W*153/1350,libH=app.W*157/1350,libY=app.H*70/609,anY=app.W*15/1350;
     std::vector<AllTabButtons> tabButtons = {
             {TAB_GENERAL,true ,  {     {CLOSE_BUTTON, SDL_Rect{app.W-app.W/30,0,app.W/30,app.H/25}},
                                          {WINDOW_BUTTON, SDL_Rect{app.W-app.W*2/30,0,app.W/30,app.H/25}},
@@ -742,7 +769,7 @@ int main( int argc, char* argv[]) {
                                          {nameSpriteTextInput,SDL_Rect{app.W*950/1503+app.W * 50 / 1365, app.H * 411 / 609, app.W * 125 / 1365, app.H * 28 / 609},"Sprite1",true,true},
                                          {showButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
                                          {hideButton,SDL_Rect{app.W*950/1503+app.W * 48 / 1365+app.W * 36 / 1365, app.H * 449 / 609, app.W * 36 / 1365, app.H * 33 / 609}},
-                                 }
+s                                 }
 
             },
             {TAB_CODE,    true, {{Motion,   SDL_Rect{0, app.H * 90 / 609, app.W * 60 / 1365, app.H * 45 / 609}},
@@ -982,6 +1009,13 @@ int main( int argc, char* argv[]) {
 
 
 
+    app.hChange = FindFirstChangeNotificationA(
+            "backgroundLibrary",
+            FALSE,
+            FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE
+    );
+
+    loadPNGLibrary(app);
 
     Theme light, color;
     color = light; // default color
@@ -1103,7 +1137,13 @@ int main( int argc, char* argv[]) {
     SDL_FreeCursor(app.cursorArrow);
     SDL_FreeCursor(app.cursorIBeam);
     SDL_FreeCursor(app.cursorHand);
-
+    FindCloseChangeNotification(app.hChange);
+    for (auto &it:app.library)
+    {
+        SDL_DestroyTexture(it.second);
+    }
+    app.library.clear();
+    app.libraryName.clear();
     SDL_DestroyTexture(app.box.t);
     SDL_DestroyTexture(app.box.background);
     SDL_DestroyTexture(app.box.backgroundStage);
@@ -2274,6 +2314,21 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
             if(it.onButton)
                 app.inPaintSpace=true;
         }
+
+        if(it.ID==nameCostumeTextInput)
+        {
+            if(app.activeCosEdit)
+                it.active=true;
+            else
+                it.active=false;
+        }
+        if(it.ID==backgroundName)
+        {
+            if(!app.activeCosEdit)
+                it.active=true;
+            else
+                it.active=false;
+        }
     }
 
     for(auto &it:buttons)
@@ -2454,7 +2509,13 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
         }
         if(it.ID==nameCostumeTextInput)
         {
-            text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,it.text,"Medium12",SDL_Color{87, 94, 117,255});
+            if(app.activeCosEdit)
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,it.text,"Medium12",SDL_Color{87, 94, 117,255});
+        }
+        if(it.ID==backgroundName)
+        {
+            if(!app.activeCosEdit)
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,it.text,"Medium12",SDL_Color{87, 94, 117,255});
         }
         if(it.ID==xImage)
         {
@@ -2470,7 +2531,10 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
         }
         if(it.ID==nameCostume)
         {
-            text(app,it.rect.x-it.rect.w/4,it.rect.y+it.rect.h/2+2,"Costume","Roman11",SDL_Color{87, 94, 117,255});
+            if(app.activeCosEdit)
+               text(app,it.rect.x-it.rect.w/4,it.rect.y+it.rect.h/2+2,"Costume","Roman11",SDL_Color{87, 94, 117,255});
+            else
+                text(app,it.rect.x-it.rect.w*5/16,it.rect.y+it.rect.h/2+2,"Background","Roman11",SDL_Color{87, 94, 117,255});
         }
         if(it.ID==flipHorizontal)
         {
@@ -2614,17 +2678,28 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
             {
                 if(it.leftClick)
                 {
-                    SDL_SetRenderTarget(app.renderer, app.textureHelperCos);
-                    SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 0);
-                    SDL_RenderClear(app.renderer);
-                    SDL_RenderCopy(app.renderer, app.boxhelper.t, NULL, NULL);
+                    if(app.activeCosEdit)
+                    {
+                        SDL_SetRenderTarget(app.renderer, app.textureHelperCos);
+                        SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 0);
+                        SDL_RenderClear(app.renderer);
+                        SDL_RenderCopy(app.renderer, app.boxhelper.t, NULL, NULL);
 
 
-                    SDL_SetRenderTarget(app.renderer, app.boxhelper.t);
-                    SDL_SetRenderDrawColor(app.renderer, app.colorPaint.r, app.colorPaint.g, app.colorPaint.b, app.colorPaint.a);
-                    SDL_RenderClear(app.renderer);
-                    SDL_RenderCopy(app.renderer,app.textureHelperCos, NULL, NULL);
-                    SDL_SetRenderTarget(app.renderer, NULL);
+                        SDL_SetRenderTarget(app.renderer, app.boxhelper.t);
+                        SDL_SetRenderDrawColor(app.renderer, app.colorPaint.r, app.colorPaint.g, app.colorPaint.b, app.colorPaint.a);
+                        SDL_RenderClear(app.renderer);
+                        SDL_RenderCopy(app.renderer,app.textureHelperCos, NULL, NULL);
+                        SDL_SetRenderTarget(app.renderer, NULL);
+                    }
+                    else
+                    {
+                        SDL_SetRenderTarget(app.renderer, app.boxhelper.t);
+                        SDL_SetRenderDrawColor(app.renderer, app.colorPaint.r, app.colorPaint.g, app.colorPaint.b, app.colorPaint.a);
+                        SDL_RenderClear(app.renderer);
+                        SDL_SetRenderTarget(app.renderer, NULL);
+                    }
+
                 }
             }
         }
@@ -2847,6 +2922,95 @@ void RenderCostumesTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeCod
             }
 
         }
+        if(it.ID==save)
+        {
+            if(!app.activeCosEdit)
+            {
+                if(!it.onButton)
+                {
+                    roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,218,218,218,255);
+                }
+                else
+                {
+                    roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,133,92,214,255);
+                }
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,"Save","Bold12",SDL_Color{87, 94, 117,255});
+                if(it.leftClick)
+                {
+                    std::string name;
+                    for(auto &it2:buttons)
+                    {
+                        if(it2.ID==backgroundName)
+                        {
+                            name=it2.text;
+                            break;
+                        }
+                    }
+                   name+=".png";
+                    const char *filters[] = {"*.png"};
+
+                    const char *savePath = tinyfd_saveFileDialog(
+                            "Save Image",
+                            name.c_str(),
+                            1,
+                            filters,
+                            "PNG Files"
+                    );
+
+                    if (savePath != NULL)
+                    {
+                        int w,h;
+                        SDL_QueryTexture(app.boxhelper.t, NULL, NULL, &w, &h);
+                        SDL_Surface *sur = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
+                        SDL_Texture *tex = SDL_CreateTexture(app.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
+                        SDL_SetRenderTarget(app.renderer, tex);
+                        SDL_RenderCopy(app.renderer, app.boxhelper.t, NULL, NULL);
+                        SDL_RenderReadPixels(app.renderer, NULL, SDL_PIXELFORMAT_RGBA32, sur->pixels, sur->pitch);
+                        SDL_SetRenderTarget(app.renderer, NULL);
+                        SDL_DestroyTexture(tex);
+                        IMG_SavePNG(sur, (savePath));
+                        SDL_FreeSurface(sur);
+                    }
+                }
+            }
+        }
+        if(it.ID==saveLibrary)
+        {
+            if(!app.activeCosEdit)
+            {
+                if(!it.onButton)
+                {
+                    roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,218,218,218,255);
+                }
+                else
+                {
+                    roundedRectangleRGBA(app.renderer,it.rect.x,it.rect.y,it.rect.x+it.rect.w,it.rect.y+it.rect.h,15,133,92,214,255);
+                }
+                text(app,it.rect.x+it.rect.w/2,it.rect.y+it.rect.h/2+2,"Save in Library","Bold12",SDL_Color{87, 94, 117,255});
+                if(it.leftClick)
+                {
+                    int w,h;
+                    SDL_QueryTexture(app.boxhelper.t, NULL, NULL, &w, &h);
+                    SDL_Surface *sur = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_RGBA32);
+                    SDL_Texture *tex = SDL_CreateTexture(app.renderer, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_TARGET, w, h);
+                    SDL_SetRenderTarget(app.renderer, tex);
+                    SDL_RenderCopy(app.renderer, app.boxhelper.t, NULL, NULL);
+                    SDL_RenderReadPixels(app.renderer, NULL, SDL_PIXELFORMAT_RGBA32, sur->pixels, sur->pitch);
+                    SDL_SetRenderTarget(app.renderer, NULL);
+                    SDL_DestroyTexture(tex);
+                    for(auto &it2:buttons)
+                    {
+                        if(it2.ID==backgroundName)
+                        {
+                            IMG_SavePNG(sur, ("backgroundLibrary\\" + it2.text + ".png").c_str());
+                            break;
+                        }
+                    }
+                    SDL_FreeSurface(sur);
+                    loadPNGLibrary(app);
+                }
+            }
+        }
 
 
         if(app.activeCosEdit)
@@ -3012,7 +3176,7 @@ void SaveProject(AppState &app)
                 a["child"].push_back(b);
             }
         }
-        j["allBlock"].push_back(a);
+        j["block"].push_back(a);
     }
 
     j["box"]["x"] = app.box.x;
@@ -3293,11 +3457,15 @@ void LoadProject(AppState& app)
         app.box.w=j["box"]["textureW"];
         app.box.h=j["box"]["textureH"];
         app.box.t=base64ToTexture(app.renderer,j["box"]["texture"].get<std::string>(),j["box"]["textureW"],j["box"]["textureH"]);
+        app.box.backgroundName=j["box"]["backgroundName"];
+        int w2,h2;
+        w2=j["box"]["backgroundW"];
+        h2=j["box"]["backgroundH"];
+        app.box.background=base64ToTexture(app.renderer,j["box"]["background"].get<std::string>(),w2,h2);
 
         app.box.w/=2;
         app.box.h/=2;
     }
-
 
 }
 void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect> &buttons,AppState &app,ThemeCodeTab &color,TabTexture &texture)
@@ -3446,6 +3614,8 @@ void RenderExtensionTab(std::vector<AllTabButtons> &tabs,std::vector<ButtonRect>
         }
     }
 
+
+                }
 
 
 }
@@ -4276,6 +4446,7 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 
 
 }
+
 SDL_Texture* LoadTexture(SDL_Renderer* renderer,const std::string& file){
     SDL_Surface* surface = IMG_Load(file.c_str());
     if(!surface)
@@ -4802,6 +4973,9 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
             continue;
         }
 
+            continue;
+        }
+
 
         if (current.ID == waitSecondes) {
             app.isWaiting = true;
@@ -4968,6 +5142,8 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,int line,std::v
             std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(int(app.box.x))+"] [y:"+std::to_string(int(y0))+"->"+std::to_string(int(app.box.y))+"]";
             LogEvent(app,line,"GOTO_RAND",inf);
             break;
+
+
         }
         case goToMousePointer:{
             int x0=app.box.x;
@@ -5073,6 +5249,18 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,int line,std::v
             LogEvent(app,line,"THINK",inf);
             break;
         }
+        case think:{
+            std::string u=block.p1;
+            if(u== ""){
+                app.isThinking=false;
+                app.think="";
+                break;
+            }
+            app.isThinking= true;
+            app.think=u;
+            std::string inf="[think"+u+"]";
+            LogEvent(app,line,"THINK",inf);
+            break;}
 
 
 
@@ -5227,6 +5415,7 @@ double safeStod(const std::string &s, double defaultVal )
     } catch(...) {
         return defaultVal;
     }
+    UpdateSpriteState(tabs,app);
 }
 void inverseRoundedBoxRGBA(SDL_Renderer* renderer,int x1, int y1, int x2, int y2,int radius,Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
