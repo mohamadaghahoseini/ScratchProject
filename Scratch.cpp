@@ -4236,53 +4236,34 @@ void RenderGeneralTap(std::vector<ButtonRect> &buttons, AppState &app, ThemeGene
 //                        app.endProgram = true;
 //                    }
                 }
-                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
-                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
-                aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
-                aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2))-1,(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2))-1,color.closeButton.r,color.closeButton.g,color.closeButton.b,color.closeButton.a);
             }
+            int L=6;
+            aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2),it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2),214,214,214,255);
+            aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2)),(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2)),214,214,214,255);
+            aalineRGBA(app.renderer,it.rect.x+it.rect.w/2-L/ sqrt(2),it.rect.y+it.rect.h/2-L/sqrt(2)-1,it.rect.x+it.rect.w/2+L/sqrt(2),it.rect.y+it.rect.h/2+L/sqrt(2)-1,214,214,214,255);
+            aalineRGBA(app.renderer,(it.rect.x+it.rect.w/2-L/ sqrt(2)),(it.rect.y+it.rect.h/2+L/sqrt(2))-1,(it.rect.x+it.rect.w/2+L/sqrt(2)),(it.rect.y+it.rect.h/2-L/sqrt(2))-1,214,214,214,255);
         }
-        else if(it.ID==WINDOW_BUTTON)
+        if(it.ID==WINDOW_BUTTONExtension)
         {
             if(it.active)
             {
                 if(it.onButton)
                 {
-                    SDL_SetRenderDrawColor(app.renderer,color.windowButtonMouse.r,color.windowButtonMouse.g,color.windowButtonMouse.b,color.windowButtonMouse.a);
+                    SDL_SetRenderDrawColor(app.renderer,122, 86, 199, 255);
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
-                SDL_SetRenderDrawColor(app.renderer,color.windowButton.r,color.windowButton.g,color.windowButton.b,color.windowButton.a);
+                SDL_SetRenderDrawColor(app.renderer,214,214,214,255);
                 SDL_Rect rectWindow={it.rect.x+it.rect.w/2-it.rect.w/10,it.rect.y+it.rect.h/2-it.rect.w/10,it.rect.w*2/10,it.rect.w*2/10};
                 SDL_RenderDrawRect(app.renderer,&rectWindow);
             }
-            //    if(it.leftClick)
-
-//            {
-//                if(app.maximize)
-//                {
-//                    SDL_SetWindowSize(app.window,app.AVAILABLE_SCREEN.w,app.AVAILABLE_SCREEN.h);
-//                    app.maximize=false;
-//                }
-//                else
-//                {
-//                    SDL_SetWindowSize(app.window,app.W/2,app.H/2);
-//                    SDL_SetWindowPosition(app.window,app.W/4,app.H/4);
-//                    app.W=app.W/2;
-//                    app.H=app.H/2;
-//                    app.X=app.W/4;
-//                    app.Y=app.H/4;
-//                    app.maximize=true;
-//                }
-//            }
-
         }
-        else if(it.ID==MINIMIZED_BUTTON)
+        if(it.ID==MINIMIZED_BUTTONExtension)
         {
             if(it.active)
             {
                 if(it.onButton)
                 {
-                    SDL_SetRenderDrawColor(app.renderer,color.minimizeButtonMouse.r,color.minimizeButtonMouse.r,color.minimizeButtonMouse.b,color.minimizeButtonMouse.a);
+                    SDL_SetRenderDrawColor(app.renderer,122, 86, 199, 255);
                     SDL_RenderFillRect(app.renderer,&it.rect);
                 }
                 int s=6;
@@ -5150,6 +5131,8 @@ void Engine(AppState &app,std::vector<AllTabButtons> &tabs,MouseState &mouse,Key
         if (current.ID == whenGreenFlagClicked) {
             executeBlock(app, current,mouse,  app.engineCurrentIndex,tabs);
             app.engineCurrentIndex++;
+            continue;
+        }
 
             continue;
         }
@@ -5349,6 +5332,26 @@ void executeBlock(AppState& app, Block & block,MouseState &mouse,int line,std::v
             pening(app.isPenDown,app,x0,y0);
             std::string inf="[x"+std::to_string(int(x0))+"->"+std::to_string(app.box.x)+"] [y:"+std::to_string(y0)+"->"+std::to_string(app.box.y)+"]";
             LogEvent(app,line,"GOTO_MOUSE",inf);
+            break;
+
+
+        }
+        case goToMousePointer:{
+            int h=app.stageRect.h;
+            int w=app.stageRect.w;
+            int x=mouse.x-app.W*1223/1503;
+            int y=mouse.y-app.H*228/609;
+            app.box.x=x;
+            app.box.y=-y;
+            if(app.box.x<=-w/2)
+                app.box.x=-w/2;
+            else if(app.box.x>=w/2)
+                app.box.x=w/2;
+            if(app.box.y<=-h/2)
+                app.box.y=-h/2;
+            else if(app.box.y>=h/2)
+                app.box.y=h/2;
+
             break;
 
 
